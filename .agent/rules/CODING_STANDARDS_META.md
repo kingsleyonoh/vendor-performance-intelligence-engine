@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} — Coding Standards: Meta (Skills, Environment, Branching)
+# Vendor Performance Intelligence Engine — Coding Standards: Meta (Skills, Environment, Branching)
 
 > Part 2 of 5. Also loaded: `CODING_STANDARDS.md` (core AI discipline), `CODING_STANDARDS_TESTING.md` (core TDD), `CODING_STANDARDS_TESTING_LIVE.md` (mock policy + component + backend integration), `CODING_STANDARDS_TESTING_E2E.md` (E2E), `CODING_STANDARDS_DOMAIN.md` (deploy/security)
 > This file covers skill orchestration, shell environment, and git branching strategy. The main AI discipline rules live in `CODING_STANDARDS.md`.
@@ -38,17 +38,14 @@ You have a vast library of specialized skills available. **Use them proactively*
 - **Always announce:** *"Using skill: [skill-name] for this task."* so the user knows which patterns are being applied.
 - If no skill matches, proceed normally.
 
-## PowerShell Environment
-- **ALWAYS activate the virtual environment before ANY `python` or `pip` command:**
-  ```powershell
-  .\venv\Scripts\Activate.ps1
-  ```
-- **NEVER run `pip install` without the venv active.** This installs to system Python and breaks other projects.
-- Verify venv is active: prompt shows `(venv)` prefix. If not, activate first.
-- Use `;` to chain commands, **NEVER** `&&`
-- **NEVER use inline `python -c "..."`** for complex code. Write a `.py` file instead.
-- Special characters that break PowerShell: `|`, `>`, `<`, `$`, `()`, `{}`
-- Write Python scripts to files instead of inline commands.
+## Shell / Ruby Environment
+- **Bash-flavored shell on Windows.** Use Unix syntax: `/dev/null`, forward slashes, `export VAR=`.
+- **Ruby 3.3 via rbenv / rvm / asdf** — match `.ruby-version` in the repo root. Run `ruby -v` to verify before `bundle` commands.
+- **Always `bundle exec`** for project-scoped Ruby tools (`bundle exec rails`, `bundle exec rubocop`, `bundle exec rspec` — though VPI uses Minitest via `bin/rails test`).
+- **Prefer `bin/` wrappers** — `bin/rails`, `bin/dev`, `bin/rake`. These pin versions via Bundler's binstubs and won't silently pick up a system gem.
+- Use `;` to chain shell commands when using PowerShell; use `&&` in bash. **Do not mix.**
+- **NEVER use inline `ruby -e "..."`** for complex code. Write a `.rb` file or a rake task in `lib/tasks/`.
+- For Docker Compose local services: `docker compose up -d postgres redis` — never commit `.env` with real secrets; use `.env.example` + placeholder values.
 
 ## Git Branching Strategy
 

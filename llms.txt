@@ -1,0 +1,68 @@
+# Vendor Performance Intelligence Engine
+
+> Multi-signal behavioral scoring engine that aggregates vendor-performance data from four ecosystem systems into a single composite risk score per vendor per tenant. Rules-driven, interpretable, tenant-scoped.
+
+## What This Does
+
+Answers the procurement question no existing system can: "Of our 300 active vendors, which 20 are degrading, and why?" Today, vendor performance signals live siloed across accounts payable, legal operations, and integration plumbing. A vendor that ships late invoices, silently drops webhook events, and breaches contract obligations appears as three separate 1-star problems instead of one 5-star vendor-to-re-tender. This engine correlates those signals over rolling 30/90/180-day windows, computes a weighted composite score with explainability (every score decomposes into top 5 contributing signals), and fires risk-band-change alerts — giving procurement teams continuous vendor intelligence instead of quarterly post-mortems.
+
+## Who This Is For
+
+Chief Procurement Officers at mid-market manufacturers and B2B services firms with €5M+ annual vendor spend and 100+ active vendors. Also relevant to Accounts Payable leads, Vendor Management Office teams, and engineering teams integrating vendor-risk into procurement workflows.
+
+## Quick Start
+
+1. Clone: `git clone https://github.com/kingsleyonoh/vendor-performance-intelligence-engine`
+2. Install: `bundle install`
+3. Configure: `cp .env.example .env` — fill in required values (or leave ecosystem integrations as `{SERVICE}_ENABLED=false`)
+4. Infra: `docker compose up -d postgres redis`
+5. Seed: `bin/rails db:migrate && bin/rails vpi:setup` — creates default tenant and prints API key
+6. Run: `bin/dev`
+
+## API Surface
+
+All endpoints are scoped by `X-API-Key`. See `openapi.yaml` for full spec.
+
+- `POST /api/tenants/register` — self-service tenant registration (gated by `SELF_REGISTRATION_ENABLED`)
+- `GET /api/tenants/me` — current tenant profile
+- `POST /api/tenants/me/rotate-key` — rotate API key
+- `POST /api/signals` — push one signal or a batch
+- `POST /api/signals/from-hub` — Hub-fanned-out event ingress (HMAC-authenticated)
+- `GET /api/vendors`, `POST /api/vendors`, `PATCH /api/vendors/:id`, `POST /api/vendors/:id/merge` — vendor CRUD + merge
+- `GET /api/vendors/:id/score/current`, `GET /api/vendors/:id/score/history` — scores
+- `GET /api/vendors/:id/signals`, `GET /api/vendors/:id/aliases`, `POST /api/vendors/:id/aliases` — signal + alias inspection
+- `GET /api/alerts`, `POST /api/alerts/:id/acknowledge`, `POST /api/alerts/:id/suppress`, `POST /api/alerts/:id/retry` — alert lifecycle
+- `GET /api/scoring-rules`, `POST /api/scoring-rules`, `POST /api/scoring-rules/:id/activate`, `POST /api/scoring-rules/preview` — scoring config
+- `POST /api/reports`, `GET /api/reports/:id/download` — vendor scorecards, portfolio risk, retender candidates, trend analysis
+- `GET /api/ingestion/sources`, `POST /api/ingestion/sources/:id/pull-now`, `GET /api/ingestion/runs` — ingestion management
+- `GET /api/health`, `/api/health/db`, `/api/health/redis`, `/api/health/ready` — health checks
+
+## Integration
+
+All ecosystem connections are **OPTIONAL** — the engine works standalone via manual `POST /api/signals`.
+
+- **Notification Hub** (outbound) — dispatches `vendor.risk_band_changed` and `vendor.risk_band_improved` events to procurement operators via email + Telegram. Env: `NOTIFICATION_HUB_URL`, `NOTIFICATION_HUB_API_KEY`.
+- **Workflow Automation Engine** (outbound) — triggers tenant-configured escalation workflows on HIGH/CRITICAL alerts. Env: `WORKFLOW_ENGINE_URL`, `WORKFLOW_ENGINE_API_KEY`.
+- **Webhook Ingestion Engine** (inbound pull) — per-vendor delivery failure rates via `GET /api/sources`, `GET /api/dead-letters`. Env: `WEBHOOK_ENGINE_URL`, `WEBHOOK_ENGINE_API_KEY`.
+- **Invoice Reconciliation Engine** (Hub event subscribe + REST pull) — financial signals (discrepancy rate, overdue rate). Env: `INVOICE_RECON_URL`, `INVOICE_RECON_API_KEY`.
+- **Contract Lifecycle Engine** (NATS subscribe + REST pull) — contractual signals (breach rate, renewal latency). Env: `CONTRACT_ENGINE_URL`, `CONTRACT_ENGINE_API_KEY`, `NATS_URL`, `NATS_CREDS_PATH`.
+- **Transaction Reconciliation Engine** (REST pull) — transactional signals (cross-processor timing variance). Env: `RECON_ENGINE_URL`, `RECON_ENGINE_API_KEY`.
+- **Multi-Agent RAG Platform** (nightly REST pull) — vendor-graph enrichment (parent companies, known contracts). Env: `RAG_PLATFORM_URL`, `RAG_PLATFORM_API_KEY`.
+
+## Architecture
+
+- **Tenant isolation**: every data-bearing table has `tenant_id UUID NOT NULL`; API key per tenant resolves via `X-API-Key → Current.tenant`; all queries scoped.
+- **Append-only signals**: `vendor_signals` is insert-only, partitioned monthly on `recorded_at` via pg_partman. Corrections insert a new row with `status='superseded'` on the original.
+- **Derived scores**: `vendor_scores` snapshots computed from signals via rules-driven scoring (weighted categories + time-decay half-life + band thresholds). Every score captures top 5 contributors for explainability.
+- **Alert snapshot freezing**: `risk_alerts.delivery_payload` captures the full event at creation; retries bind to this frozen shape — tenant renames or vendor merges after the alert fires do not change what the Hub receives.
+- **Report snapshot freezing**: `vendor_reports.tenant_snapshot` + `render_context` capture the tenant identity and score data at generation time; PDF re-downloads bind to the frozen context (required for procurement audit artifacts).
+- **Rails layers**: `app/controllers → lib/{ingestion,scoring,ecosystem,tenants,alerts,reports} → models`. `lib/ecosystem/` is pure HTTP/NATS clients, zero app dependencies.
+
+## Source
+
+- Repository: https://github.com/kingsleyonoh/vendor-performance-intelligence-engine
+- Documentation: ./README.md (generated via `/generate-readme` after build)
+- PRD: ./docs/vendor-performance-intelligence-engine_prd.md
+- API spec: ./openapi.yaml
+- MCP server: ./mcp.json
+- Agent context: ./AGENTS.md

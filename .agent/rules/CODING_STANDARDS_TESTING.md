@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} — Coding Standards: Testing (Core TDD)
+# Vendor Performance Intelligence Engine — Coding Standards: Testing (Core TDD)
 
 > Part 2 of 4. Also loaded: `CODING_STANDARDS.md`, `CODING_STANDARDS_TESTING_LIVE.md`, `CODING_STANDARDS_DOMAIN.md`
 > This file covers core TDD discipline. For mock policy, integration, component, and E2E testing → see `CODING_STANDARDS_TESTING_LIVE.md`.
@@ -38,15 +38,15 @@ Before moving from RED → GREEN, verify ALL applicable categories have tests:
 | # | Category | What to Test |
 |---|----------|-------------|
 | 1 | Happy path | Does it work with valid, normal input? |
-| 2 | Required fields | Does it reject None/blank for required fields? |
-| 3 | Uniqueness | Does it enforce unique constraints? |
+| 2 | Required fields | Does it reject nil/blank for required fields? |
+| 3 | Uniqueness | Does it enforce unique constraints (incl. composite tenant-scoped indexes)? |
 | 4 | Defaults | Do default values apply correctly when field is omitted? |
-| 5 | FK relationships | Do foreign keys enforce CASCADE/PROTECT correctly? |
-| 6 | Tenant isolation | Can Tenant A see Tenant B's data? (MANDATORY if multi-tenant — see Multi-Tenant Fixtures Mandatory below; includes template / email / invoice / PDF rendering) |
-| 7 | Edge cases | Empty strings, zero, negative, very long strings, special chars |
-| 8 | Error paths | What happens when external APIs fail, DB is down, input is malformed? |
-| 9 | String representation | Does `__str__` / `__repr__` return something meaningful? |
-| 10 | Meta options | Are ordering, indexes, and constraints working? |
+| 5 | FK relationships | Do foreign keys enforce CASCADE/RESTRICT correctly? |
+| 6 | Tenant isolation | Can Tenant A see Tenant B's data? (MANDATORY — see Multi-Tenant Fixtures Mandatory below; includes PDF/email rendering via `tenant_snapshot` / `delivery_payload`) |
+| 7 | Edge cases | Empty strings, zero, negative, very long strings, special chars, non-ASCII (UTF-8 tenant names) |
+| 8 | Error paths | Faraday 5xx, timeouts, NATS disconnect, PostgreSQL down, malformed dry-validation input |
+| 9 | String representation | Does `to_s` / `inspect` return something meaningful? |
+| 10 | Meta options | Are ordering, indexes, and constraints working (`tenant_id`-first composite indexes)? |
 
 **If a category applies and you skip it, you're cheating.** If RED phase shows fewer than 2 failures, add more tests — you're probably not testing enough.
 
@@ -63,10 +63,10 @@ If the project is multi-tenant (PRD §2 Architecture Principles mandates `tenant
 
 **Rules:**
 
-1. **Fixtures file (`tests/fixtures/tenants.*` or equivalent) MUST define ≥2 tenants** with intentionally-different identity values. Include edge cases: non-ASCII characters, longer addresses, different jurisdictions.
-2. **Template / email / invoice / PDF tests MUST parametrize over both tenants** (pytest parametrize, table-driven tests, etc.) and assert that rendering Tenant A's snapshot does NOT include any Tenant B literal value and vice versa.
-3. **Cross-tenant leakage grep (runs in suite):** Add a test that reads the generated artifact and greps for EVERY literal identity value of the OTHER tenant. Any match fails the test with message `TENANT_IDENTITY_LEAK: field=X expected=A actual_included=B`.
-4. **Tenant isolation test per module:** Category 6 in the Test Quality Checklist above becomes MANDATORY (was conditional "if multi-tenant"). Every query, every API response, every job run must be asserted to respect `tenant_id` scoping.
+1. **Fixtures file (`test/fixtures/tenants.yml`) MUST define ≥2 tenants** with intentionally-different identity values. VPI ships with `acme-gmbh-de` + `globex-inc-us` populated with distinct `legal_name`, `full_legal_name`, `display_name`, `address.country_code`, `locale` (`de-DE` vs `en-US`), `timezone` (`Europe/Berlin` vs `America/New_York`), `brand_primary_hex`, `brand_accent_hex`, `registration.*`, `contact.*`. Include edge cases: non-ASCII characters in one tenant's `display_name`, longer addresses, different jurisdictions.
+2. **Template / email / PDF tests MUST parametrize over both tenants** (Minitest table-driven via `[tenants(:acme_gmbh_de), tenants(:globex_inc_us)].each do |tenant|`) and assert that rendering Tenant A's `TenantSnapshot` does NOT include any Tenant B literal value and vice versa.
+3. **Cross-tenant leakage grep (runs in suite):** Add a test that reads the generated artifact (PDF text extraction, email body, Hub event payload JSON) and greps for EVERY literal identity value of the OTHER tenant. Any match fails the test with message `TENANT_IDENTITY_LEAK: field=X expected=A actual_included=B`.
+4. **Tenant isolation test per module:** Category 6 in the Test Quality Checklist above is MANDATORY. Every query, every API response, every job run must be asserted to respect `tenant_id` scoping.
 
 **This rule is non-optional for config-driven surfaces.** Skipping it means the template-hardcoding bug class (a surface hardcodes one tenant's literal identity, tests pass under a single-tenant fixture, leaks to production when a second tenant onboards) will re-occur project-by-project until tests catch it at RED.
 
@@ -92,15 +92,26 @@ If the project is multi-tenant (PRD §2 Architecture Principles mandates `tenant
 ## Test Modularity Rules
 1. **One test class per model/service** — never mix models in one class
 2. **Max 300 lines per test file** — split if larger
-3. **`setUp` creates only what that class needs** — no global fixtures
-4. **Tests are independent** — no shared state, no ordering dependency
-5. **Any single test can run in isolation** — `python -m pytest tests/test_x.py::TestClass::test_method`
-6. **Test names describe business behavior** — not technical actions
-7. **No test helpers longer than 10 lines** — extract to a `tests/factories.py` if needed
+3. **`setup` creates only what that class needs** — no global fixtures beyond the mandatory tenant fixtures
+4. **Tests are independent** — no shared state, no ordering dependency (`parallelize(workers: :number_of_processors)` must pass)
+5. **Any single test can run in isolation** — `bin/rails test test/models/vendor_test.rb:42` or `bin/rails test TEST=test/models/vendor_test.rb -n test_name`
+6. **Test names describe business behavior** — not technical actions (`test "rejects signal with future recorded_at beyond 30 days"` not `test "raises ArgumentError"`)
+7. **No test helpers longer than 10 lines** — extract to `test/support/` helper modules or a fixture factory
 
 ## Business-Context Testing
 - Tests must reflect the BUSINESS PURPOSE described in the spec.
 - Every test must answer: Does this protect data? Apply rules correctly? Handle failure? Match the spec?
 - Test names must describe business behavior, not technical actions.
+
+## Test Runner Commands (VPI — Minitest + Capybara + Playwright)
+
+| Scope | Command |
+|-------|---------|
+| All unit + integration tests | `bin/rails test` |
+| Single file | `bin/rails test test/models/vendor_test.rb` |
+| Single test | `bin/rails test test/models/vendor_test.rb:42` |
+| System (UI) tests via Capybara + Playwright | `bin/rails test:system` |
+| Just one module's tests | `bin/rails test test/lib/scoring/` |
+| Parallel (default on) | `bin/rails test -p` |
 
 > **Integration, Component, E2E, and Mock Policy rules** → see `CODING_STANDARDS_TESTING_LIVE.md` (Part 3 of 4).

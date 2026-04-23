@@ -1,0 +1,83 @@
+# Vendor Performance Intelligence Engine — docker build context exclusions.
+# Keep the context small; exclude anything not needed to run the app in production.
+
+# ---------------------------------------------------------------------------
+# Git / version control
+# ---------------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+.github
+
+# ---------------------------------------------------------------------------
+# Environment / secrets (never bake into the image)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Rails runtime artifacts
+# ---------------------------------------------------------------------------
+tmp/
+log/
+storage/
+/public/packs
+/public/packs-test
+/public/assets
+/public/uploads
+/public/system
+
+# ---------------------------------------------------------------------------
+# Dependencies rebuilt in the image
+# ---------------------------------------------------------------------------
+node_modules/
+vendor/bundle
+.bundle/
+
+# ---------------------------------------------------------------------------
+# Tests / coverage / dev-only
+# ---------------------------------------------------------------------------
+spec/
+test/
+coverage/
+.rspec
+.rspec_status
+.byebug_history
+.rubocop_cache
+.rubocop.yml
+.simplecov
+
+# ---------------------------------------------------------------------------
+# Editor / OS noise
+# ---------------------------------------------------------------------------
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ---------------------------------------------------------------------------
+# Docs + agent scaffolding (not needed at runtime)
+# ---------------------------------------------------------------------------
+docs/
+README.md
+CHANGELOG.md
+LICENSE
+.agent/
+.claude/
+.yolo/
+CLAUDE.md
+AGENTS.md
+.cursorrules
+.cursor/
+llms.txt
+MAINTAINING.md
+
+# ---------------------------------------------------------------------------
+# Docker / CI local artifacts
+# ---------------------------------------------------------------------------
+Dockerfile
+docker-compose*.yml
+.dockerignore

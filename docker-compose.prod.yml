@@ -1,0 +1,169 @@
+# Vendor Performance Intelligence Engine — production compose
+# Deploy: docker compose -f docker-compose.prod.yml up -d
+#
+# ⛔ NEVER put passwords, API keys, or tokens in this file — it is git-tracked.
+# Use ${VAR} references and create a .env file on the server for secrets.
+#
+# Traefik is assumed to be running on the host with an external `traefik-public`
+# network. Internal services (postgres, redis) live on the private `vpi-internal`
+# bridge network and are not exposed to Traefik.
+
+name: vendor-performance-intelligence-engine
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: vendor-performance-intelligence-engine:latest
+    container_name: vpi-migrate
+    restart: "no"
+    env_file:
+      - .env
+    command: ["bin/rails", "db:prepare"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vpi-internal
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: vendor-performance-intelligence-engine:latest
+    container_name: vpi-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      WEB_CONCURRENCY: "2"
+      RAILS_MAX_THREADS: "5"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - reports_data:/var/vpi/reports
+    networks:
+      - traefik-public
+      - vpi-internal
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3000/api/health/ready"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.vpi.rule=Host(`vendors.kingsleyonoh.com`)"
+      - "traefik.http.routers.vpi.entrypoints=websecure"
+      - "traefik.http.routers.vpi.tls=true"
+      - "traefik.http.routers.vpi.tls.certresolver=letsencrypt"
+      - "traefik.http.services.vpi.loadbalancer.server.port=3000"
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: vendor-performance-intelligence-engine:latest
+    container_name: vpi-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - reports_data:/var/vpi/reports
+    networks:
+      - vpi-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f sidekiq > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "0.75"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vpi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vpi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-vpi_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-partman.sh:/docker-entrypoint-initdb.d/10-init-partman.sh:ro
+    networks:
+      - vpi-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vpi_user} -d ${POSTGRES_DB:-vpi_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: vpi-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - vpi-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  redis_data:
+  reports_data:
+
+networks:
+  traefik-public:
+    external: true
+  vpi-internal:
+    driver: bridge
