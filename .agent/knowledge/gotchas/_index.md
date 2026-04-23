@@ -6,6 +6,7 @@
 
 | File | Summary |
 |------|---------|
+| `2026-04-23-postgres-port-5432-conflict.md` | Docker PG 16 clashes with system PG on 5432 — map Docker to 5440 via `docker-compose.override.yml`. |
 | `EXAMPLE.md` | Template showing the expected shape — delete once a real gotcha exists. |
 
 ## How to add a new gotcha

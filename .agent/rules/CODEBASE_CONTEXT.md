@@ -94,14 +94,7 @@ All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{
 
 ## Key Patterns & Conventions
 
-> Full patterns catalog in `.agent/knowledge/patterns/`. Core VPI principles (PRD §2):
-
-1. **Tenant-scoped by default** — every data table has `tenant_id UUID NOT NULL`; every query scoped via `Current.tenant`; composite index on `(tenant_id, ...)` for every query pattern.
-2. **Standalone-first, ecosystem-enhanced** — every integration is feature-flagged (`{SERVICE}_ENABLED=false` default). The engine runs fully without any ecosystem wiring.
-3. **Signals are append-only facts; scores are derived** — `vendor_signals` is INSERT-only. Scores are recomputed from signals, never patched.
-4. **Explainability before accuracy** — every score decomposes into category scores + top-5 signal contributors.
-5. **Rolling windows over snapshots** — behavior evaluated over rolling 30/90/180-day windows with time-weighted decay.
-6. **Rules-driven, not ML-driven (v1)** — declarative weights + thresholds, tuneable per-tenant. No black-box ML.
+> Patterns catalog: `.agent/knowledge/patterns/_index.md` — one file per pattern. The six VPI architecture invariants are the canonical expression of "principles" and live in **PRD §2** (source of truth) + **`docs/progress.md`** Invariants banner (reviewer quick-reference) + **`.agent/rules/architecture_rules.md`** (enforcement). Do not re-state them here — keeps this file bounded and prevents drift.
 
 ## Deep References
 
@@ -149,11 +142,7 @@ All templates bind to `DeliveryPayload` shape (§5.5) — frozen at alert creati
 
 ## Gotchas & Lessons Learned
 
-| Gotcha | Symptom | Solution |
-|--------|---------|----------|
-| Local port 5432 conflict with system PostgreSQL | Docker PostgreSQL fails to start or tests hit wrong DB | Map Docker PostgreSQL to port 5440 via `docker-compose.override.yml` (`ports: ["5440:5432"]`); update `DATABASE_URL` |
-
-> New gotchas → `.agent/knowledge/gotchas/` (one file per gotcha, `YYYY-MM-DD-slug.md`).
+> Gotchas catalog: `.agent/knowledge/gotchas/_index.md` — one file per gotcha, `YYYY-MM-DD-slug.md`. Do not append rows to this file; directory-per-kind only.
 
 ## Shared Foundation (MUST READ before any implementation)
 
