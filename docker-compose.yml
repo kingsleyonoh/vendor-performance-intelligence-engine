@@ -30,8 +30,16 @@ services:
     env_file:
       - .env.local
     environment:
-      # Compose-network DNS names for the service deps; .env.local may override.
-      DATABASE_URL: postgresql://vpi_user:vpi_dev_pw@postgres:5432/vpi_development
+      # Compose-network DNS names for the service deps. DATABASE_URL is NOT
+      # set here — config/database.yml resolves per-env (development vs test)
+      # via POSTGRES_HOST/USER/PASSWORD/DB, so `RAILS_ENV=test bin/rails ...`
+      # correctly points at vpi_test (not vpi_development).
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: vpi_user
+      POSTGRES_PASSWORD: vpi_dev_pw
+      POSTGRES_DB: vpi_development
+      POSTGRES_TEST_DB: vpi_test
       REDIS_URL: redis://redis:6379/0
       RAILS_ENV: development
       BUNDLE_PATH: /usr/local/bundle

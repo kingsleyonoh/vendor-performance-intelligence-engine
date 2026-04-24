@@ -100,3 +100,6 @@ AGENTS.md
 .claude/shell-snapshots/
 .claude/todos/
 .claude/statsig/
+
+/app/assets/builds/*
+!/app/assets/builds/.keep

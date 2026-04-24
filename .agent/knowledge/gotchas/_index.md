@@ -7,6 +7,7 @@
 | File | Summary |
 |------|---------|
 | `2026-04-23-postgres-port-5432-conflict.md` | Docker PG 16 clashes with system PG on 5432 — map Docker to 5440 via `docker-compose.override.yml`. |
+| `2026-04-24-rails-new-credentials-key-placeholder.md` | `rails new` crashes with `InvalidKeyLengthError` when `.env.local` holds a `RAILS_MASTER_KEY` placeholder (dotenv wins over `config/master.key`). Also: setting `DATABASE_URL` in env pins `vpi_development` under `RAILS_ENV=test`. |
 | `EXAMPLE.md` | Template showing the expected shape — delete once a real gotcha exists. |
 
 ## How to add a new gotcha
