@@ -1,0 +1,28 @@
+<section class="bg-white rounded-lg shadow-sm p-5" data-testid="signal-timeline">
+  <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">Recent signals</h2>
+
+  <% if empty? %>
+    <p class="text-sm text-gray-500" data-testid="signal-timeline-empty">No signals yet.</p>
+  <% else %>
+    <ol class="space-y-2">
+      <% signals.each do |sig| %>
+        <li class="flex items-center justify-between text-sm border-b border-gray-100 pb-2"
+            data-testid="signal-row"
+            data-signal-code="<%= sig.signal_code %>">
+          <div class="space-y-0.5">
+            <div class="font-mono text-gray-900"><%= sig.signal_code %></div>
+            <div class="text-xs text-gray-500">
+              <%= sig.source_system %> · <%= sig.source_event_id || "—" %>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="font-mono text-gray-700"><%= display_value(sig) %></div>
+            <div class="text-xs text-gray-500">
+              <%= relative_time(sig.recorded_at) %> · <%= sig.status %>
+            </div>
+          </div>
+        </li>
+      <% end %>
+    </ol>
+  <% end %>
+</section>

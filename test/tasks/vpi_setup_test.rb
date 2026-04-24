@@ -25,7 +25,10 @@ class VpiSetupTest < ActiveSupport::TestCase
     # observable. Use DELETE to also purge has_many :restrict_with_exception
     # children (users/sessions) — fixtures load them too.
     VendorScore.delete_all
-    VendorSignal.delete_all
+    # vendor_signals has a DB-level append-only trigger that blocks DELETE.
+    # TRUNCATE bypasses row-level triggers — safe here because this test
+    # intentionally resets the DB to a pre-install state.
+    ActiveRecord::Base.connection.execute("TRUNCATE TABLE vendor_signals CASCADE")
     VendorAlias.delete_all
     Vendor.delete_all
     ScoringRule.delete_all
@@ -38,7 +41,10 @@ class VpiSetupTest < ActiveSupport::TestCase
     # Reset tenant table so the rest of the suite's fixtures re-hydrate
     # deterministically (parallelize off in this file — see below).
     VendorScore.delete_all
-    VendorSignal.delete_all
+    # vendor_signals has a DB-level append-only trigger that blocks DELETE.
+    # TRUNCATE bypasses row-level triggers — safe here because this test
+    # intentionally resets the DB to a pre-install state.
+    ActiveRecord::Base.connection.execute("TRUNCATE TABLE vendor_signals CASCADE")
     VendorAlias.delete_all
     Vendor.delete_all
     ScoringRule.delete_all

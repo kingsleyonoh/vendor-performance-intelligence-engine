@@ -1,0 +1,27 @@
+<section class="bg-white rounded-lg shadow-sm p-5" data-testid="alias-card">
+  <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">Aliases</h2>
+
+  <% if empty? %>
+    <p class="text-sm text-gray-500" data-testid="alias-card-empty">No upstream aliases linked yet.</p>
+  <% else %>
+    <ul class="space-y-2">
+      <% aliases.each do |al| %>
+        <li class="flex items-center justify-between text-sm border-b border-gray-100 pb-2"
+            data-testid="alias-row"
+            data-alias-id="<%= al.id %>">
+          <div class="space-y-0.5">
+            <div class="font-mono text-gray-900"><%= al.source_system %> / <%= al.source_ref %></div>
+            <div class="text-xs text-gray-500">
+              confidence <%= al.confidence.to_f.round(2) %>
+              <% if al.is_confirmed? %>
+                <span class="ml-1 text-green-700">confirmed</span>
+              <% else %>
+                <span class="ml-1 text-amber-700">pending</span>
+              <% end %>
+            </div>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

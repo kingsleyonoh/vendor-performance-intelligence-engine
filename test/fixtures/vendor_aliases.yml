@@ -1,0 +1,49 @@
+# Vendor aliases — used by vendor detail UI (alias card) + controller tests.
+# A mix of confirmed and pending aliases per tenant so the pending-confirm UI
+# flow has both cases.
+
+# ---------- Acme aliases ----------
+acme_alpha_primary:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  source_system: invoice_recon
+  source_ref: ACME-INV-ALPHA-001
+  alias_text: Alpha Maschinenbau AG
+  confidence: 1.00
+  is_confirmed: true
+  created_at: 2026-02-01 00:00:00
+  updated_at: 2026-02-01 00:00:00
+
+acme_alpha_secondary:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  source_system: contract_engine
+  source_ref: ACME-CONTRACT-7701
+  alias_text: Alpha Maschinenbau
+  confidence: 0.85
+  is_confirmed: false
+  created_at: 2026-03-05 00:00:00
+  updated_at: 2026-03-05 00:00:00
+
+acme_beta_primary:
+  tenant: acme_gmbh_de
+  vendor: acme_beta
+  source_system: invoice_recon
+  source_ref: ACME-INV-BETA-001
+  alias_text: Beta Elektronik GmbH
+  confidence: 1.00
+  is_confirmed: true
+  created_at: 2026-02-10 00:00:00
+  updated_at: 2026-02-10 00:00:00
+
+# ---------- Globex aliases ----------
+globex_zeta_primary:
+  tenant: globex_inc_us
+  vendor: globex_zeta
+  source_system: invoice_recon
+  source_ref: GLOBEX-INV-ZETA-001
+  alias_text: Zeta Industrial Supply Inc.
+  confidence: 1.00
+  is_confirmed: true
+  created_at: 2026-02-05 00:00:00
+  updated_at: 2026-02-05 00:00:00

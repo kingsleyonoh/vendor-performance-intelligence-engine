@@ -123,7 +123,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-vpi_production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init-partman.sh:/docker-entrypoint-initdb.d/10-init-partman.sh:ro
+    # Note: vendor_signals uses native Postgres range partitioning (not pg_partman).
+    # The parent table + initial partitions are created by Rails migrations;
+    # PartitionManagerJob handles monthly rollover (PRD §4.5, §7).
     networks:
       - vpi-internal
     healthcheck:

@@ -56,4 +56,56 @@ class PartitionRolloverTest < ActiveSupport::TestCase
     rows = VendorSignal.where(vendor_id: @vendor.id).count
     assert_operator rows, :>=, 2
   end
+
+  test "PRD §15 #11: future-date signal with no partition lands in vendor_signals_default" do
+    # A date far enough in the future that no partition has been created
+    # yet (PartitionManagerJob only pre-creates next month). The DEFAULT
+    # partition catches these so ingestion never fails on unknown dates.
+    far_future = 400.days.from_now.utc
+
+    sig = VendorSignal.create!(signal_attrs(recorded_at: far_future))
+
+    partition = ActiveRecord::Base.connection.select_value(
+      "SELECT tableoid::regclass::text FROM vendor_signals WHERE id = '#{sig.id}'"
+    )
+    assert_equal "vendor_signals_default", partition,
+      "far-future rows must land in the catchall partition (PRD §15 #11)"
+  end
+
+  test "PRD §15 #11: PartitionManagerJob ensures next-month partition exists without downtime" do
+    # Identify the CURRENT next-month partition (created at migration).
+    now = Time.now.utc
+    current_next_month_name = "vendor_signals_#{now.next_month.strftime('%Y_%m')}"
+
+    # Make a "simulated tomorrow" that crosses into the month after next —
+    # the month the job is expected to create.
+    simulated_now = now.next_month
+    expected_new_partition = "vendor_signals_#{simulated_now.next_month.strftime('%Y_%m')}"
+
+    # Drop the expected-new partition first to exercise the "create if
+    # missing" branch. If it was somehow already present, the DROP is a
+    # no-op and the test still asserts the CREATE path via the presence
+    # check below.
+    ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{expected_new_partition} CASCADE")
+
+    refute partition_exists?(expected_new_partition),
+      "test setup: #{expected_new_partition} must not exist before the job runs"
+
+    PartitionManagerJob.perform_now(now_iso: simulated_now.iso8601)
+
+    assert partition_exists?(expected_new_partition),
+      "PartitionManagerJob must create #{expected_new_partition} when simulated_now=#{simulated_now}"
+
+    # And it must not have regressed the original next-month partition.
+    assert partition_exists?(current_next_month_name),
+      "Existing next-month partition #{current_next_month_name} must remain"
+  end
+
+  private
+
+  def partition_exists?(name)
+    ActiveRecord::Base.connection.select_value(
+      "SELECT 1 FROM pg_tables WHERE tablename = '#{name}'"
+    ).present?
+  end
 end

@@ -76,6 +76,52 @@ class VendorsControllerTest < ActionDispatch::IntegrationTest
     assert_not_equal "retagged", vendors(:globex_zeta).reload.category
   end
 
+  test "GET /vendors/:id renders own tenant vendor (Acme)" do
+    sign_in_as @acme_user
+    vendor = vendors(:acme_alpha)
+
+    get "/vendors/#{vendor.id}"
+
+    assert_response :success
+    assert_match(/Alpha Maschinenbau/, response.body)
+    refute_match(/Zeta Industrial/, response.body)
+    refute_match(/Eta Chemical/, response.body)
+  end
+
+  test "GET /vendors/:id on cross-tenant id redirects safely (Acme asks for Globex)" do
+    sign_in_as @acme_user
+    globex_vendor = vendors(:globex_zeta)
+
+    get "/vendors/#{globex_vendor.id}"
+
+    # Tenant-isolation invariant: the page MUST NOT render globex identity.
+    assert_response :redirect
+    follow_redirect!
+    refute_match(/Zeta Industrial/, response.body)
+  end
+
+  test "POST /vendors/:id/terminate flips status=terminated" do
+    sign_in_as @acme_user
+    vendor = vendors(:acme_alpha)
+
+    assert_equal "active", vendor.status
+
+    post "/vendors/#{vendor.id}/terminate"
+    assert_response :redirect
+
+    assert_equal "terminated", vendor.reload.status
+  end
+
+  test "POST /vendors/:id/terminate cannot terminate cross-tenant vendor" do
+    sign_in_as @acme_user
+    globex_vendor = vendors(:globex_zeta)
+    before_status = globex_vendor.status
+
+    post "/vendors/#{globex_vendor.id}/terminate"
+
+    assert_equal before_status, globex_vendor.reload.status, "cross-tenant vendor must not be terminated"
+  end
+
   test "POST /vendors/bulk cannot update a cross-tenant vendor" do
     sign_in_as @acme_user
     globex_id = vendors(:globex_zeta).id

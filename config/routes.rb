@@ -7,9 +7,12 @@ Rails.application.routes.draw do
   # ----------------------------------------------------------------
   root to: "dashboard#index"
 
-  resources :vendors, only: [:index] do
+  resources :vendors, only: [:index, :show] do
     collection do
       post :bulk
+    end
+    member do
+      post :terminate
     end
   end
 

@@ -8,11 +8,76 @@
 # `Current.tenant.id` — the invariant holds regardless of surface.
 class VendorsController < ApplicationController
   PER_PAGE = 25
+  DETAIL_SIGNAL_LIMIT = 20
+  DETAIL_HISTORY_DAYS = 90
 
   def index
     tenant_id = Current.tenant.id
     @filters = filter_params
     @vendors, @latest_scores = Vendors::IndexQuery.call(tenant_id: tenant_id, filters: @filters, per_page: PER_PAGE)
+  end
+
+  # GET /vendors/:id — PRD §5b primary journey steps 3-5.
+  # Tenant-scoped: cross-tenant IDs raise RecordNotFound → rescue to redirect.
+  def show
+    tenant_id = Current.tenant.id
+    @vendor = Vendor.where(tenant_id: tenant_id).find_by(id: params[:id])
+
+    unless @vendor
+      redirect_to vendors_path, alert: "Vendor not found." and return
+    end
+
+    @latest_score = VendorScore
+      .where(tenant_id: tenant_id, vendor_id: @vendor.id)
+      .order(computed_at: :desc)
+      .first
+
+    @score_history = VendorScore
+      .where(tenant_id: tenant_id, vendor_id: @vendor.id)
+      .where("computed_at >= ?", DETAIL_HISTORY_DAYS.days.ago)
+      .order(computed_at: :asc)
+      .pluck(:computed_at, :composite_score, :band)
+
+    @recent_signals = VendorSignal
+      .where(tenant_id: tenant_id, vendor_id: @vendor.id)
+      .order(recorded_at: :desc)
+      .limit(DETAIL_SIGNAL_LIMIT)
+      .to_a
+
+    @aliases = VendorAlias
+      .where(tenant_id: tenant_id, vendor_id: @vendor.id)
+      .order(is_confirmed: :asc, confidence: :desc, created_at: :desc)
+      .to_a
+  end
+
+  # POST /vendors/:id/terminate — soft-delete via status transition.
+  # PRD §5.2 status lifecycle. Cross-tenant IDs → redirect with alert.
+  def terminate
+    tenant_id = Current.tenant.id
+    vendor = Vendor.where(tenant_id: tenant_id).find_by(id: params[:id])
+
+    unless vendor
+      redirect_to vendors_path, alert: "Vendor not found." and return
+    end
+
+    if vendor.status == "terminated"
+      redirect_to vendor_path(vendor), notice: "Vendor already terminated." and return
+    end
+
+    before = { status: vendor.status }
+    vendor.update!(status: "terminated")
+
+    ::Audit::Recorder.record(
+      actor: Current.user,
+      action: "vendors#terminate",
+      entity_type: "Vendor",
+      entity_id: vendor.id,
+      tenant_id: tenant_id,
+      before_state: before,
+      after_state: { status: "terminated" }
+    )
+
+    redirect_to vendor_path(vendor), notice: "Vendor terminated."
   end
 
   # POST /vendors/bulk — bulk update category/status for selected vendors.

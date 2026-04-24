@@ -1,0 +1,37 @@
+<header class="bg-white rounded-lg shadow-sm p-5" data-testid="vendor-header">
+  <div class="flex items-start justify-between">
+    <div class="space-y-2">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold text-gray-900" data-testid="vendor-name"><%= vendor.canonical_name %></h1>
+        <%= render Vendors::BandPillComponent.new(band: band) %>
+      </div>
+      <div class="flex items-center gap-5 text-sm text-gray-600">
+        <span data-testid="vendor-score">
+          Score: <strong class="font-mono text-gray-900"><%= composite_score&.round(1) || "—" %></strong>
+        </span>
+        <span data-testid="vendor-trend">
+          Trend: <strong class="font-mono text-gray-900"><%= trend_glyph %> <%= trend || "n/a" %></strong>
+        </span>
+        <span data-testid="vendor-spend">
+          Spend: <strong class="font-mono text-gray-900"><%= formatted_spend %></strong>
+        </span>
+        <span data-testid="vendor-category">
+          Category: <strong class="text-gray-900"><%= vendor.category || "—" %></strong>
+        </span>
+        <span data-testid="vendor-status">
+          Status: <strong class="text-gray-900"><%= vendor.status %></strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2" data-testid="vendor-actions">
+      <% unless vendor.status == "terminated" %>
+        <%= button_to "Terminate",
+              terminate_vendor_path(vendor),
+              method: :post,
+              data: { testid: "terminate-button", turbo_confirm: "Mark this vendor as terminated?" },
+              class: "rounded-md px-3 py-1.5 text-sm font-medium border border-red-300 text-red-700 bg-white hover:bg-red-50" %>
+      <% end %>
+    </div>
+  </div>
+</header>

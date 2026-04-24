@@ -168,18 +168,20 @@ class SignalIngesterTest < ActiveSupport::TestCase
   # ---------------- Tenant isolation ----------------
 
   test "tenant isolation: Acme-tagged signal never lands in Globex-owned vendor" do
-    Ingestion::SignalIngester.call(payload: valid_payload, tenant: @acme)
-    Ingestion::SignalIngester.call(payload: valid_payload, tenant: @globex)
+    acme_result = Ingestion::SignalIngester.call(payload: valid_payload, tenant: @acme)
+    globex_result = Ingestion::SignalIngester.call(payload: valid_payload, tenant: @globex)
 
     acme_vendors = Vendor.where(tenant_id: @acme.id).pluck(:id)
     globex_vendors = Vendor.where(tenant_id: @globex.id).pluck(:id)
-    # No overlap
+    # No vendor is shared across tenants.
     assert_empty acme_vendors & globex_vendors
-    # Each tenant has its own signal
-    assert_equal 1, VendorSignal.where(tenant_id: @acme.id,
-                                        vendor_id: acme_vendors).count
-    assert_equal 1, VendorSignal.where(tenant_id: @globex.id,
-                                        vendor_id: globex_vendors).count
+
+    # The resolver MUST land each new signal on a same-tenant vendor.
+    assert_equal @acme.id,   acme_result[:signal].tenant_id
+    assert_includes acme_vendors, acme_result[:signal].vendor_id
+
+    assert_equal @globex.id, globex_result[:signal].tenant_id
+    assert_includes globex_vendors, globex_result[:signal].vendor_id
   end
 
   # ---------------- post_insert_hook contract ----------------

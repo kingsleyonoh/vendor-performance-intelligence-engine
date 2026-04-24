@@ -4,6 +4,13 @@
 # changes in last 7 days" dashboard widget.
 
 <% category_scores = { financial: 30.0, operational: 30.0, contractual: 30.0, integration: 30.0, transactional: 30.0 }.to_json %>
+<% alpha_contributors = [
+     { "signal_code" => "invoice.late_ratio_30d", "contribution" => 12.5, "value" => 0.05 },
+     { "signal_code" => "invoice.dispute_rate_90d", "contribution" => 8.3, "value" => 0.02 },
+     { "signal_code" => "invoice.discrepancy_rate_30d", "contribution" => 6.1, "value" => 0.01 },
+     { "signal_code" => "invoice.avg_days_to_pay", "contribution" => 4.2, "value" => 432000 },
+     { "signal_code" => "invoice.overbilling_rate_30d", "contribution" => 2.0, "value" => 0.004 }
+   ].to_json %>
 
 # ---------- Acme — current scores ----------
 acme_alpha_current:
@@ -14,7 +21,7 @@ acme_alpha_current:
   band: low
   trend: stable
   category_scores: <%= category_scores %>
-  top_contributors: <%= [].to_json %>
+  top_contributors: <%= alpha_contributors %>
   window_days: 90
   signals_considered_count: 10
   computed_at: <%= 1.day.ago.iso8601 %>
@@ -50,6 +57,38 @@ acme_gamma_current:
   computed_at: <%= 3.days.ago.iso8601 %>
   created_at: <%= 3.days.ago.iso8601 %>
   updated_at: <%= 3.days.ago.iso8601 %>
+
+# Older scores for acme_alpha — feed the score-history sparkline on the
+# vendor detail page (≥2 data points for a line chart).
+acme_alpha_history_1:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 18.0
+  band: low
+  trend: stable
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 9
+  computed_at: <%= 30.days.ago.iso8601 %>
+  created_at: <%= 30.days.ago.iso8601 %>
+  updated_at: <%= 30.days.ago.iso8601 %>
+
+acme_alpha_history_2:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 14.0
+  band: low
+  trend: improving
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 10
+  computed_at: <%= 60.days.ago.iso8601 %>
+  created_at: <%= 60.days.ago.iso8601 %>
+  updated_at: <%= 60.days.ago.iso8601 %>
 
 # Older score for acme_beta — shows degrading trend within last 7 days
 # (previous band=low, now medium → band change for dashboard widget)

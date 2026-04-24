@@ -1,0 +1,84 @@
+# Vendor signals — used by vendor detail UI (signal timeline) + top-contributor
+# rendering. Append-only per PRD §2 invariant 3 — fixtures mirror that rule
+# (status = normalized or scored, never mutated after load).
+#
+# NOTE: vendor_signals is partitioned by recorded_at. Partitions are created
+# for current + adjacent months at test-DB prepare time (see the migration).
+# Fixtures therefore pin `recorded_at` to relative ERB dates that always land
+# in an existing partition. Schema has no `updated_at` column — signals are
+# append-only.
+
+# ---------- Acme Alpha — 3 signals ----------
+acme_alpha_signal_1:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  signal_code: invoice.late_ratio_30d
+  source_system: invoice_recon
+  source_event_id: acme-alpha-sig-1
+  value_numeric: 0.05
+  status: normalized
+  context: <%= {}.to_json %>
+  recorded_at: <%= 2.days.ago.iso8601 %>
+  created_at: <%= 2.days.ago.iso8601 %>
+
+acme_alpha_signal_2:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  signal_code: invoice.dispute_rate_90d
+  source_system: invoice_recon
+  source_event_id: acme-alpha-sig-2
+  value_numeric: 0.02
+  status: normalized
+  context: <%= {}.to_json %>
+  recorded_at: <%= 5.days.ago.iso8601 %>
+  created_at: <%= 5.days.ago.iso8601 %>
+
+acme_alpha_signal_3:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  signal_code: invoice.discrepancy_rate_30d
+  source_system: invoice_recon
+  source_event_id: acme-alpha-sig-3
+  value_numeric: 0.01
+  status: normalized
+  context: <%= {}.to_json %>
+  recorded_at: <%= 10.days.ago.iso8601 %>
+  created_at: <%= 10.days.ago.iso8601 %>
+
+# ---------- Acme Beta — 2 signals ----------
+acme_beta_signal_1:
+  tenant: acme_gmbh_de
+  vendor: acme_beta
+  signal_code: invoice.late_ratio_30d
+  source_system: invoice_recon
+  source_event_id: acme-beta-sig-1
+  value_numeric: 0.15
+  status: normalized
+  context: <%= {}.to_json %>
+  recorded_at: <%= 1.day.ago.iso8601 %>
+  created_at: <%= 1.day.ago.iso8601 %>
+
+acme_beta_signal_2:
+  tenant: acme_gmbh_de
+  vendor: acme_beta
+  signal_code: invoice.avg_days_to_pay
+  source_system: invoice_recon
+  source_event_id: acme-beta-sig-2
+  value_numeric: 432000
+  status: normalized
+  context: <%= {}.to_json %>
+  recorded_at: <%= 3.days.ago.iso8601 %>
+  created_at: <%= 3.days.ago.iso8601 %>
+
+# ---------- Globex Zeta — 1 signal (tenant-isolation smoke) ----------
+globex_zeta_signal_1:
+  tenant: globex_inc_us
+  vendor: globex_zeta
+  signal_code: invoice.late_ratio_30d
+  source_system: invoice_recon
+  source_event_id: globex-zeta-sig-1
+  value_numeric: 0.03
+  status: normalized
+  context: <%= {}.to_json %>
+  recorded_at: <%= 2.days.ago.iso8601 %>
+  created_at: <%= 2.days.ago.iso8601 %>

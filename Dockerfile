@@ -14,7 +14,9 @@ ENV BUNDLE_DEPLOYMENT=1 \
     NODE_ENV=production \
     LANG=C.UTF-8
 
-# Build-time dependencies: compiling native gems, jsbundling/cssbundling, libvips for ActiveStorage.
+# Build-time dependencies. Rails 8 + Tailwind CSS ships via `tailwindcss-rails`
+# (pure-Ruby wrapper around the tailwindcss binary) + importmap-rails for JS —
+# no Node/npm required.
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       build-essential \
@@ -24,8 +26,6 @@ RUN apt-get update -qq && \
       libpq-dev \
       libvips \
       libyaml-dev \
-      nodejs \
-      npm \
       pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
@@ -40,18 +40,12 @@ RUN bundle config set --local deployment 'true' && \
     find /usr/local/bundle -name "*.o" -delete && \
     find /usr/local/bundle -name "*.c" -delete
 
-# Optional JS/CSS bundling dependency layer.
-COPY package.json package-lock.json* yarn.lock* ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; \
-    elif [ -f yarn.lock ]; then npm install -g yarn && yarn install --frozen-lockfile --production; \
-    fi
-
 # Copy the app and precompile assets. SECRET_KEY_BASE is a throwaway for asset compilation.
 COPY . .
 RUN SECRET_KEY_BASE=precompile-placeholder \
     RAILS_ENV=production \
     bundle exec rails assets:precompile && \
-    rm -rf node_modules tmp/cache vendor/bundle test spec
+    rm -rf tmp/cache test spec
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -67,8 +61,11 @@ ENV BUNDLE_DEPLOYMENT=1 \
     LANG=C.UTF-8 \
     PORT=3000
 
-# Runtime-only libs: libpq5 (PG driver), libvips42 (ActiveStorage), wkhtmltopdf (WickedPDF),
-# tini (PID 1 signal handling), curl (healthcheck).
+# Runtime-only libs: libpq5 (PG driver), libvips42 (ActiveStorage), tini
+# (PID 1 signal handling), curl (healthcheck). WickedPDF / wkhtmltopdf
+# lands in Phase 3 when the reporting engine is wired (PRD §5.6, §13.3) —
+# the Debian 12 repos no longer ship wkhtmltopdf, so Phase 3 will fetch
+# a static wkhtmltopdf binary instead.
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       ca-certificates \
@@ -77,8 +74,7 @@ RUN apt-get update -qq && \
       libvips42 \
       libyaml-0-2 \
       tini \
-      tzdata \
-      wkhtmltopdf && \
+      tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 # Non-root user.

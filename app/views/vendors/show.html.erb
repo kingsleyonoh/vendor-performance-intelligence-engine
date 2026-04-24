@@ -1,0 +1,16 @@
+<% content_for :title, "#{@vendor.canonical_name} — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-4">
+  <%= render Vendors::HeaderComponent.new(vendor: @vendor, score: @latest_score) %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 space-y-4">
+      <%= render Vendors::ScoreHistoryChartComponent.new(history: @score_history) %>
+      <%= render Vendors::SignalTimelineComponent.new(signals: @recent_signals) %>
+    </div>
+    <div class="space-y-4">
+      <%= render Vendors::ContributorTableComponent.new(score: @latest_score) %>
+      <%= render Vendors::AliasCardComponent.new(aliases: @aliases) %>
+    </div>
+  </div>
+</div>

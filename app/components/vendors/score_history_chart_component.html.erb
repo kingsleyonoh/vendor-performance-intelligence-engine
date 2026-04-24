@@ -1,0 +1,39 @@
+<section class="bg-white rounded-lg shadow-sm p-5" data-testid="score-history-chart">
+  <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">Score history (90 days)</h2>
+
+  <% if empty? %>
+    <p class="text-sm text-gray-500" data-testid="score-history-empty">Not enough history yet (need at least 2 data points).</p>
+  <% else %>
+    <svg viewBox="<%= viewbox %>" xmlns="http://www.w3.org/2000/svg"
+         class="w-full h-auto"
+         aria-label="Composite score history sparkline"
+         data-testid="score-history-svg">
+      <!-- Axis gridlines at 25/50/75 -->
+      <% [25, 50, 75].each do |mark| %>
+        <% y = Vendors::ScoreHistoryChartComponent::PADDING +
+                (Vendors::ScoreHistoryChartComponent::HEIGHT - 2 * Vendors::ScoreHistoryChartComponent::PADDING) *
+                (1 - mark / 100.0) %>
+        <line x1="<%= Vendors::ScoreHistoryChartComponent::PADDING %>"
+              x2="<%= Vendors::ScoreHistoryChartComponent::WIDTH - Vendors::ScoreHistoryChartComponent::PADDING %>"
+              y1="<%= y.round(1) %>" y2="<%= y.round(1) %>"
+              stroke="#E2E8F0" stroke-width="1" />
+      <% end %>
+
+      <!-- Score line -->
+      <polyline points="<%= polyline_points %>"
+                fill="none"
+                stroke="var(--brand-accent)"
+                stroke-width="2" />
+
+      <!-- Current-value dot -->
+      <% if last_point %>
+        <% lx, ly = last_point.split(",") %>
+        <circle cx="<%= lx %>" cy="<%= ly %>" r="3.5" fill="var(--brand-accent)" />
+      <% end %>
+    </svg>
+
+    <p class="mt-2 text-xs text-gray-500" data-testid="score-history-count">
+      <%= pluralize(history.length, "score point") %>
+    </p>
+  <% end %>
+</section>
