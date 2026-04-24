@@ -17,6 +17,7 @@
 | `name-normalization.md` | `Ingestion::NameNormalizer.call(raw)` — pure function: raw vendor name → deterministic fuzzy-match key (lowercased, ASCII-ish, legal-suffix-stripped). Consumed by `Vendor` model (`before_validation`) + `Ingestion::VendorResolver`. PRD §5.2. |
 | `vendor-resolution-flow.md` | `Ingestion::VendorResolver.resolve(...)` — the 5-rung ladder that translates `(source_system, source_ref, hints)` → canonical `vendor_id` (+ `vendor_alias` row for idempotency). Confidence levels 1.00 / 0.85 / 0.70. PRD §5.2. |
 | `scoring-primitives.md` | `Scoring::SignalScalers.scale(...)` + `Scoring::TimeDecay.weight(...)` — two pure functions the composite scorer composes. Scaler maps every `value_type` × `direction` to 0..100 contribution; decay is `0.5 ^ (age / half_life)`. Clamp-on-data, raise-on-config. PRD §5.4. |
+| `signal-ingestion-pipeline.md` | `Ingestion::SignalIngester.call(payload:, tenant:)` — the single entry point every signal source (REST push, NATS, Hub fanout, pull, manual) uses to turn a raw payload into a `vendor_signals` row. Validates (`SignalValidator` dry-validation), dedups on `(tenant, source_system, source_event_id)`, resolves vendor, rejects terminated vendors, inserts, fires `post_insert_hook` (Phase 2 wires to `ScoreRecomputeJob`). 8 rejection-reason sentinels. PRD §5.3. |
 
 ## What belongs here
 
