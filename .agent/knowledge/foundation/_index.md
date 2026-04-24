@@ -13,6 +13,7 @@
 | `cache-helpers.md` | Three-tier memoization convention: `Cache::RequestCache` (generic `vpi:<ns>:<key>` wrapper) -> `Cache::TenantCache` (api_key_prefix -> tenant_id, 60 s TTL) -> `Cache::ScoringConfigCache` (scoring_rules per tenant, 300 s TTL). PRD §10b. |
 | `session-auth-pattern.md` | Two distinct auth surfaces: Rails 8 built-in session auth (email + password cookie) for UI (`/session`, `/passwords`); `X-API-Key` middleware for `/api/*`. Never cross-pollinate. PRD §5b, §8. |
 | `audit-recorder.md` | `Audit::Recorder.record(...)` — single entry point every mutating controller + job calls. Emits tagged JSON log line in Batch 005; becomes an `audit_log` INSERT in Phase 3. PRD §4.12. |
+| `tenant-snapshot-shape.md` | `Tenants::CaptureSnapshot.call(tenant_id)` — frozen `{id, slug, §4.T identity, snapshot_at}` hash that binds every template surface (PDF, Hub payload, email). Captured once at alert/report emission; never re-queried. PRD §4.T + §5.5 + §5.6. |
 
 ## What belongs here
 

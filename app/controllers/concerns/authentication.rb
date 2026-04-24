@@ -23,6 +23,13 @@ module Authentication
 
     def resume_session
       Current.session ||= find_session_by_cookie
+      # UI auth path sets Current.tenant from the session row's pinned
+      # tenant_id, paralleling the API middleware (lib/auth/api_key_authenticator
+      # in Phase 1) that sets it from the X-API-Key lookup. Either path
+      # leaves Current.tenant populated for downstream controllers, policies,
+      # and jobs. PRD §2 Architecture Principle 1.
+      Current.tenant ||= Current.session&.tenant
+      Current.session
     end
 
     def find_session_by_cookie
@@ -41,6 +48,7 @@ module Authentication
     def start_new_session_for(user)
       user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
         Current.session = session
+        Current.tenant = session.tenant
         cookies.signed.permanent[:session_id] = { value: session.id, httponly: true, same_site: :lax }
       end
     end

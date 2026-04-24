@@ -1,6 +1,6 @@
 # Vendor Performance Intelligence Engine — Codebase Context
 
-> Last updated: 2026-04-23
+> Last updated: 2026-04-24 (Phase 0 close-out)
 > Template synced: 2026-04-23
 
 ## Tech Stack
@@ -30,12 +30,22 @@
 ## Project Structure
 
 ```
-app/ (controllers/api/+ui/, models/, jobs/, policies/, serializers/, components/, views/)
-lib/ (tenants/, alerts/, ingestion/, scoring/, ecosystem/, reports/, auth/, audit/)
-config/ (routes.rb, initializers/, schedule.yml)
+app/
+  controllers/ (api/base_controller.rb, concerns/authentication.rb, sessions_controller.rb, passwords_controller.rb)
+  models/ (application_record.rb, current.rb, user.rb, session.rb — Rails 8 auth generator output)
+  jobs/, mailers/, helpers/, channels/, views/
+  (policies/, serializers/, components/ — arrive with domain modules in Phase 2+)
+lib/
+  cache/ (request_cache.rb, scoring_config_cache.rb, tenant_cache.rb)
+  errors/ (json_api_error.rb)
+  audit/ (recorder.rb — stub)
+  tasks/ (test.rake)
+  (tenants/, alerts/, ingestion/, scoring/, ecosystem/, reports/, auth/ — pending Phase 1+)
+config/ (routes.rb, initializers/ — cors, rack_attack, lograge, sidekiq, request_id_instrumentation)
 db/ (migrate/, seeds/signal_definitions.yml)
 test/ (controllers/, models/, jobs/, lib/, integration/, system/, fixtures/, e2e_api/, support/)
-docker/ (Dockerfile, docker-compose.yml, docker-compose.prod.yml)
+docker/ + Dockerfile + docker-compose.yml + docker-compose.prod.yml
+bin/ (dev, dc, rails, rake, rubocop, brakeman, setup, thrust)
 ```
 
 See PRD §9 for the full tree with per-file annotations. Per-module summaries in `.agent/rules/CODEBASE_CONTEXT_MODULES.md`; schema details in `.agent/rules/CODEBASE_CONTEXT_SCHEMA.md`.
@@ -71,7 +81,7 @@ All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{
 
 ## Commands
 
-> **Docker-mode dev loop.** This project has no host Ruby — every command runs inside the `dev` service defined in `docker-compose.yml`. `bin/dc` is a thin wrapper around `docker compose run --rm dev` (added in the dev-container SETUP batch).
+> **Docker-mode dev loop.** This project has no host Ruby — every command runs inside the `dev` service defined in `docker-compose.yml`. `bin/dc` is a thin wrapper around `docker compose run --rm dev` (added in the dev-container SETUP batch). Host commands shown in parentheses as reference only.
 
 | Action | Command (host) | Underlying |
 |--------|---------------|------------|
@@ -95,7 +105,7 @@ All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{
 - **One API key per tenant.** `X-API-Key` header → take first 12 chars (`api_key_prefix`) → query `tenants` → constant-time SHA-256 compare against `api_key_hash` → set `Current.tenant` (Rails `CurrentAttributes`, thread-local).
 - **Self-registration:** `POST /api/tenants/register` (rate-limited 5/min/IP, gated by `SELF_REGISTRATION_ENABLED`). Returns raw key ONCE; SHA-256 stored.
 - **Tenant identity columns** (§4.T): `legal_name`, `full_legal_name`, `display_name`, `address`, `registration`, `contact`, `wordmark_url`, `brand_primary_hex`, `brand_accent_hex`, `locale`, `timezone` — all on the `tenants` row, bound by every PDF + email + Hub payload.
-- **Middleware:** `lib/auth/api_key_authenticator.rb` (Rack middleware). Public allowlist: `/api/tenants/register`, `/api/health/*`, `/api/signals/from-hub` (HMAC-verified).
+- **Middleware:** `lib/auth/api_key_authenticator.rb` (Rack middleware). Public allowlist: `/api/tenants/register`, `/api/health/*`, `/api/signals/from-hub` (HMAC-verified). **Status:** `Current` class present (`app/models/current.rb`) but the API-key middleware itself is pending Phase 1 (tenants table does not yet exist).
 
 ## Key Patterns & Conventions
 
@@ -105,22 +115,30 @@ All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{
 
 | Topic | Where to look |
 |-------|--------------|
-| Auth | `lib/auth/` + `app/controllers/api/base_controller.rb` |
-| Scoring | `lib/scoring/` |
-| Ingestion | `lib/ingestion/` |
-| Ecosystem clients | `lib/ecosystem/` |
-| Reports | `lib/reports/` |
-| Alerts | `lib/alerts/` + `app/jobs/alerts/` |
-| Tenant snapshot | `lib/tenants/capture_snapshot.rb` |
-| UI | `app/views/` + `app/components/` |
+| API base / CORS / rate-limit | `app/controllers/api/base_controller.rb` + `config/initializers/{cors,rack_attack}.rb` |
+| UI auth (Rails 8 built-in) | `app/controllers/concerns/authentication.rb` + `sessions_controller.rb` + `passwords_controller.rb` + `app/models/{user,session,current}.rb` |
+| Errors | `lib/errors/json_api_error.rb` (JSON:API-style error envelope) |
+| Cache helpers | `lib/cache/{request_cache,scoring_config_cache,tenant_cache}.rb` |
+| Audit | `lib/audit/recorder.rb` (stub — real recorder wired in Phase 2) |
+| Structured logging | `config/initializers/lograge.rb` + `request_id_instrumentation.rb` |
+| Rate limiting | `config/initializers/rack_attack.rb` |
+| Sidekiq config | `config/initializers/sidekiq.rb` + `Procfile.dev` |
+| API-key auth middleware (pending) | `lib/auth/api_key_authenticator.rb` (Phase 1) |
+| Scoring (pending) | `lib/scoring/` (Phase 2) |
+| Ingestion (pending) | `lib/ingestion/` (Phase 2) |
+| Ecosystem clients (pending) | `lib/ecosystem/` (Phase 3) |
+| Reports (pending) | `lib/reports/` (Phase 3) |
+| Alerts (pending) | `lib/alerts/` + `app/jobs/alerts/` (Phase 3) |
+| Tenant snapshot (pending) | `lib/tenants/capture_snapshot.rb` (Phase 1) |
+| UI (pending beyond auth) | `app/views/` + `app/components/` (Phase 4) |
 | Architecture rules | `.agent/rules/architecture_rules.md` |
 
 ## Observability (PRD §10b)
 
 | Concern | Tool |
 |---------|------|
-| Error tracking | Sentry (`SENTRY_DSN`) |
-| Logging | Axiom via Lograge (structured JSON) |
+| Error tracking | Sentry (`SENTRY_DSN`) — gem installed (`sentry-ruby`, `sentry-rails`); DSN wiring pending Phase 3 |
+| Logging | Lograge ACTIVE as of Batch 005 — JSON formatter, emits `request_id`, `tenant_id`, `user_id`, `params`, `exception` (`config/initializers/lograge.rb`). Axiom token/dataset wiring pending Phase 3. |
 | Uptime monitoring | BetterStack — probes `/api/health/ready` every 60s |
 | APM | Prometheus + Grafana (self-hosted on VPS; scrape `/metrics`, Basic Auth via `METRICS_BASIC_AUTH_USER/PASS`) |
 | Product analytics | PostHog (self-hosted). Events: `vendor_viewed`, `alert_acknowledged`, `scoring_rule_activated`, `report_generated`, `api_key_rotated` |

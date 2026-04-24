@@ -1,0 +1,174 @@
+# Signal Catalog — PRD §4.4 + §5.3. System catalog (NOT tenant-scoped).
+# Seeded by `db/seeds.rb` via `Rails.application.load_seed`. Idempotent:
+# re-running UPSERTs by `code`.
+#
+# Categories (PRD §4.4 CHECK constraint): financial, contractual,
+# integration, transactional. Sum of default_weight across the catalog
+# is 1.00 (± 0.01) so the default rule set works out of the box.
+#
+# Directions: `higher_is_worse` = bigger value → more risk points.
+# `lower_is_worse` = smaller value → more risk points.
+
+# ──────── FINANCIAL (0.35) — Invoice Reconciliation ────────
+- code: invoice.late_ratio_30d
+  category: financial
+  source_system: invoice_recon
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.10
+  description: Share of invoices paid past due over the last 30 days.
+
+- code: invoice.dispute_rate_90d
+  category: financial
+  source_system: invoice_recon
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.06
+  description: Share of invoices disputed over the last 90 days.
+
+- code: invoice.discrepancy_rate_30d
+  category: financial
+  source_system: invoice_recon
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.08
+  description: Share of invoices flagged with line-item discrepancies (PO/GR mismatch) over 30 days.
+
+- code: invoice.avg_days_to_pay
+  category: financial
+  source_system: invoice_recon
+  direction: higher_is_worse
+  value_type: duration_seconds
+  default_weight: 0.05
+  description: Rolling average days-to-pay (stored as seconds for value_type uniformity).
+
+- code: invoice.overbilling_rate_30d
+  category: financial
+  source_system: invoice_recon
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.06
+  description: Share of invoices exceeding the PO unit price over the last 30 days.
+
+# ──────── CONTRACTUAL (0.30) — Contract Lifecycle ────────
+- code: contract.obligation_breach_count_90d
+  category: contractual
+  source_system: contract_engine
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.10
+  description: Count of contract obligation breaches in the last 90 days.
+
+- code: contract.sla_miss_ratio_30d
+  category: contractual
+  source_system: contract_engine
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.07
+  description: SLA miss ratio (obligations missed / obligations due) over the last 30 days.
+
+- code: contract.renewal_at_risk
+  category: contractual
+  source_system: contract_engine
+  direction: higher_is_worse
+  value_type: boolean
+  default_weight: 0.05
+  description: The active contract is flagged as renewal-at-risk by Contract Lifecycle.
+
+- code: contract.auto_renewal_flag
+  category: contractual
+  source_system: contract_engine
+  direction: higher_is_worse
+  value_type: boolean
+  default_weight: 0.03
+  description: Contract will auto-renew without procurement review — forces explicit re-tender decision.
+
+- code: contract.obligation_deadline_missed_count_30d
+  category: contractual
+  source_system: contract_engine
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.05
+  description: Count of obligation deadlines missed in the last 30 days (leading indicator).
+
+# ──────── INTEGRATION (0.15) — Webhook Engine ────────
+- code: webhook.dead_letter_rate_7d
+  category: integration
+  source_system: webhook_engine
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.06
+  description: Share of webhook deliveries routed to the dead-letter queue over the last 7 days.
+
+- code: webhook.avg_retry_count_7d
+  category: integration
+  source_system: webhook_engine
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.03
+  description: Average retry count per webhook delivery over the last 7 days.
+
+- code: webhook.schema_drift_count_30d
+  category: integration
+  source_system: webhook_engine
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.03
+  description: Count of webhook payloads that failed schema validation over the last 30 days.
+
+- code: webhook.ingestion_lag_p95_seconds_7d
+  category: integration
+  source_system: webhook_engine
+  direction: higher_is_worse
+  value_type: duration_seconds
+  default_weight: 0.03
+  description: p95 end-to-end ingestion lag (seconds) over the last 7 days.
+
+# ──────── TRANSACTIONAL (0.20) — Transaction Recon + RAG relational ────────
+- code: recon.discrepancy_rate_30d
+  category: transactional
+  source_system: recon_engine
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.06
+  description: Transaction reconciliation discrepancy rate over the last 30 days.
+
+- code: recon.unmatched_payment_count_7d
+  category: transactional
+  source_system: recon_engine
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.04
+  description: Count of unmatched vendor payments over the last 7 days.
+
+- code: recon.reject_rate_30d
+  category: transactional
+  source_system: recon_engine
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.03
+  description: Share of reconciliation attempts rejected over the last 30 days.
+
+- code: recon.late_settlement_count_90d
+  category: transactional
+  source_system: recon_engine
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.03
+  description: Count of settlements completed after the due date over 90 days.
+
+- code: relationship.incident_count_90d
+  category: transactional
+  source_system: manual
+  direction: higher_is_worse
+  value_type: count
+  default_weight: 0.02
+  description: Operator-logged relationship incidents (escalations, complaints) over 90 days.
+
+- code: relationship.escalation_rate_30d
+  category: transactional
+  source_system: manual
+  direction: higher_is_worse
+  value_type: rate
+  default_weight: 0.02
+  description: Share of open tickets escalated to procurement leadership over the last 30 days.

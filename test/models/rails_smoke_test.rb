@@ -16,6 +16,10 @@ class RailsSmokeTest < ActiveSupport::TestCase
 
   test "ActiveRecord is connected to the test database" do
     assert ActiveRecord::Base.connection.active?
-    assert_equal "vpi_test", ActiveRecord::Base.connection_db_config.database
+    # Rails parallel test runner appends "-N" to the DB name once the
+    # process count threshold is crossed (e.g. "vpi_test-3"). Accept
+    # either shape.
+    db = ActiveRecord::Base.connection_db_config.database
+    assert_match(/\Avpi_test(?:-\d+)?\z/, db, "unexpected test DB name: #{db}")
   end
 end
