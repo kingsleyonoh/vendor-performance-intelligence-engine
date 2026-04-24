@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Vendor Performance Intelligence Engine — dev container wrapper.
+#
+# Routes every dev command through the Ruby 3.3 dev container so the host
+# machine does not need a local Ruby/Node toolchain.
+#
+# Usage:
+#   bin/dc                          # interactive bash shell
+#   bin/dc bin/rails test           # run a command inside the container
+#   bin/dc bundle install
+#   bin/dc ruby -v
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+  exec docker compose run --rm --service-ports dev bash
+else
+  exec docker compose run --rm dev "$@"
+fi

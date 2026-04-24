@@ -1,0 +1,102 @@
+# syntax=docker/dockerfile:1.7
+#
+# Vendor Performance Intelligence Engine — Dev container (Ruby 3.3 toolchain).
+#
+# The host machine has Docker but no local Ruby toolchain, so every dev command
+# routes through this image via `bin/dc` → `docker compose run --rm dev ...`.
+# See .claude/rules/CODEBASE_CONTEXT.md "Commands" table + docs/progress.md
+# Batch 001 for context.
+#
+# Base: Debian 12 "bookworm" slim — balances image size with compatibility for
+# native gem builds (pg, nokogiri, bootsnap, nio4r). Alpine (musl) breaks several
+# of these without extra fuss; full bookworm is ~400MB heavier for no gain.
+
+FROM ruby:3.3-slim-bookworm
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
+    BUNDLE_PATH=/usr/local/bundle \
+    BUNDLE_BIN=/usr/local/bundle/bin \
+    PATH=/usr/local/bundle/bin:/app/bin:$PATH
+
+# ---------------------------------------------------------------------------
+# System packages
+#   - build-essential, git, curl:  generic Ruby gem build + fetch deps
+#   - libpq-dev:                    pg gem native extension
+#   - libyaml-dev:                  psych (Ruby 3.3 unbundles libyaml)
+#   - libvips:                      ActiveStorage image processing
+#   - libffi-dev, libssl-dev, zlib1g-dev: common native gem deps
+#   - default-jre-headless:         optional; useful for tooling but cheap
+#   - Playwright chromium system libs (installed now so `test:system` batch
+#     does not need to rebuild the image — the Chromium binary itself is
+#     installed via `playwright install chromium` in a later batch)
+# ---------------------------------------------------------------------------
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      curl \
+      git \
+      gnupg \
+      libffi-dev \
+      libpq-dev \
+      libssl-dev \
+      libvips \
+      libyaml-dev \
+      pkg-config \
+      postgresql-client \
+      tzdata \
+      zlib1g-dev \
+      # Playwright / Chromium runtime system libs
+      fonts-liberation \
+      libasound2 \
+      libatk-bridge2.0-0 \
+      libatk1.0-0 \
+      libcups2 \
+      libdbus-1-3 \
+      libdrm2 \
+      libgbm1 \
+      libgtk-3-0 \
+      libnss3 \
+      libxcomposite1 \
+      libxdamage1 \
+      libxfixes3 \
+      libxkbcommon0 \
+      libxrandr2 \
+      libxshmfence1 \
+      libxss1 \
+      libxtst6 \
+      xvfb \
+ && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Node.js 20 LTS + npm (for Tailwind CSS + esbuild/jsbundling-rails)
+# NodeSource script is the official distribution channel.
+# ---------------------------------------------------------------------------
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g npm@latest
+
+# ---------------------------------------------------------------------------
+# Non-root user with host-matching uid/gid (1000:1000) so bind-mounted files
+# retain correct ownership on Linux hosts. On Windows/Docker Desktop the mount
+# layer handles ownership mapping, but the user + group still need to exist.
+# ---------------------------------------------------------------------------
+ARG USER_UID=1000
+ARG USER_GID=1000
+RUN groupadd --gid ${USER_GID} rails \
+ && useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash rails \
+ && mkdir -p /app /usr/local/bundle \
+ && chown -R rails:rails /app /usr/local/bundle
+
+WORKDIR /app
+USER rails
+
+# Expose the Rails default port; compose maps it to the host.
+EXPOSE 3000
+
+# Default to an interactive shell so `docker compose run --rm dev` drops the
+# developer straight into bash with the toolchain ready.
+CMD ["bash"]

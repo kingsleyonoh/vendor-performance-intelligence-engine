@@ -71,19 +71,24 @@ All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{
 
 ## Commands
 
-| Action | Command |
-|--------|---------|
-| Dev server | `bin/dev` |
-| Run tests | `bin/rails test` |
-| System / UI tests | `bin/rails test:system` |
-| Lint/check | `bundle exec rubocop` |
-| Build | `bundle install && bin/rails assets:precompile` |
-| Migrate DB | `bin/rails db:migrate` |
-| Seed DB | `bin/rails db:seed` |
-| First-run setup | `bin/rails vpi:setup` |
-| Start infra | `docker compose up -d postgres redis` |
-| Stop infra | `docker compose down` |
-| Check infra | `docker compose ps` |
+> **Docker-mode dev loop.** This project has no host Ruby — every command runs inside the `dev` service defined in `docker-compose.yml`. `bin/dc` is a thin wrapper around `docker compose run --rm dev` (added in the dev-container SETUP batch).
+
+| Action | Command (host) | Underlying |
+|--------|---------------|------------|
+| Open dev shell | `bin/dc bash` | `docker compose run --rm dev bash` |
+| Dev server | `bin/dc bin/dev` | starts Puma + Sidekiq + Tailwind watcher inside `dev` service (port 3000 mapped to host) |
+| Run tests | `bin/dc bin/rails test` | `docker compose run --rm dev bin/rails test` |
+| System / UI tests | `bin/dc bin/rails test:system` | Playwright driven from inside `dev` service (Chromium installed in image) |
+| E2E tests | `bin/dc bin/rake test:e2e` | boots Puma in the dev service then runs `test/e2e_api/*_test.rb` |
+| Lint | `bin/dc bundle exec rubocop` | |
+| Build | `bin/dc bundle install && bin/dc bin/rails assets:precompile` | |
+| Migrate DB | `bin/dc bin/rails db:migrate` | Postgres runs in its own compose service on the same network |
+| Seed DB | `bin/dc bin/rails db:seed` | |
+| First-run setup | `bin/dc bin/rails vpi:setup` | |
+| Start infra | `docker compose up -d postgres redis` | `nats` added when `NATS_ENABLED=true` |
+| Stop infra | `docker compose down` | |
+| Check infra | `docker compose ps` | |
+| Verify toolchain | `docker compose run --rm dev ruby -v && docker compose run --rm dev bundle -v` | run once after the dev-container batch lands |
 
 ## Tenant Model
 

@@ -1,0 +1,122 @@
+# Vendor Performance Intelligence Engine — LOCAL DEV compose stack.
+#
+# Distinct from docker-compose.prod.yml (which is a deployment artifact with
+# Traefik labels and GHCR image references). Do not merge the two — dev concerns
+# (source bind-mount, random dev passwords, host ports for direct psql/redis-cli
+# access) would pollute the prod surface.
+#
+# Usage:
+#   bin/dc                         # drop into bash inside the dev container
+#   bin/dc bin/rails test          # run the test suite
+#   docker compose up -d postgres redis
+#   docker compose --profile nats up -d nats   # opt-in NATS JetStream
+#   docker compose down            # stop everything
+#
+# Secrets: this file is local-only and the passwords below are dev-only
+# fixtures. Never reuse them in production.
+
+name: vpi-dev
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+      args:
+        USER_UID: "1000"
+        USER_GID: "1000"
+    image: vpi-dev:latest
+    container_name: vpi-dev
+    env_file:
+      - .env.local
+    environment:
+      # Compose-network DNS names for the service deps; .env.local may override.
+      DATABASE_URL: postgresql://vpi_user:vpi_dev_pw@postgres:5432/vpi_development
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: development
+      BUNDLE_PATH: /usr/local/bundle
+    volumes:
+      - ./:/app
+      - bundle_cache:/usr/local/bundle
+      - node_modules_cache:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    tty: true
+    stdin_open: true
+    networks:
+      - vpi-dev-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vpi-postgres-dev
+    environment:
+      POSTGRES_USER: vpi_user
+      POSTGRES_PASSWORD: vpi_dev_pw
+      POSTGRES_DB: vpi_development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Host port 5434 → container 5432 avoids collision with other local
+      # Postgres instances (e.g. sibling portfolio projects on 5432/5436).
+      # Inside the compose network, `postgres:5432` is still the correct DNS.
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vpi_user -d vpi_development"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vpi-dev-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: vpi-redis-dev
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      # Host port 6384 → container 6379 avoids collision with sibling projects
+      # that also publish Redis on common ports. Internal DNS is `redis:6379`.
+      - "6384:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vpi-dev-net
+
+  # NATS JetStream — feature-flagged per PRD §2.2. Starts only when the user
+  # opts in via `docker compose --profile nats up -d nats`. Keeps the default
+  # standalone dev loop lean.
+  nats:
+    image: nats:2-alpine
+    container_name: vpi-nats-dev
+    command: ["-js", "-m", "8222"]
+    profiles:
+      - nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vpi-dev-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  bundle_cache:
+  node_modules_cache:
+
+networks:
+  vpi-dev-net:
+    driver: bridge
