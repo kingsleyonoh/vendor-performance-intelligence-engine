@@ -1,0 +1,11 @@
+# Rails 8 built-in auth fixtures. Cost=4 is the BCrypt minimum — fine for
+# tests, never for production (Rails 8 default in prod is 12).
+<% password_digest = BCrypt::Password.create("password123", cost: BCrypt::Engine::MIN_COST) %>
+
+admin:
+  email_address: admin@example.com
+  password_digest: <%= password_digest %>
+
+operator:
+  email_address: operator@example.com
+  password_digest: <%= password_digest %>

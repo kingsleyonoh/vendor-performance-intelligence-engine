@@ -49,6 +49,10 @@ module Api
       def needs_tenant
         render json: { tenant_id: Current.tenant&.id }
       end
+
+      def create
+        render json: { created: true }, status: :created
+      end
     end
 
     # Minimal ActiveModel-compatible record so RecordInvalid has something to
@@ -75,6 +79,7 @@ module Api
           get "/policy_denied", to: "api/base_controller_test/scratch#raises_action_policy_unauthorized"
           get "/unhandled", to: "api/base_controller_test/scratch#raises_unhandled"
           get "/needs_tenant", to: "api/base_controller_test/scratch#needs_tenant"
+          post "/create", to: "api/base_controller_test/scratch#create"
         end
       end
     end
@@ -137,6 +142,45 @@ module Api
       assert_equal 401, response.status
       body = JSON.parse(response.body)
       assert_equal "UNAUTHORIZED", body.dig("error", "code")
+    end
+
+    test "audit hook fires on successful mutating actions (POST) via Audit::Recorder" do
+      # Capture Rails.logger into a StringIO so we can observe the
+      # [audit]-tagged line that Audit::Recorder emits in Batch 005 (pre-
+      # Phase-3 audit_log migration).
+      log_io = StringIO.new
+      logger = Logger.new(log_io)
+      logger.formatter = ->(_severity, _time, _progname, msg) { "#{msg}\n" }
+      previous_logger = Rails.logger
+      Rails.logger = ActiveSupport::TaggedLogging.new(logger)
+      Current.tenant = Struct.new(:id).new("audit-tenant-1")
+
+      begin
+        post "/api/scratch/create"
+        assert_equal 201, response.status
+        assert_match(/\[audit\]/, log_io.string,
+                     "expected an [audit]-tagged line after a successful POST mutating action")
+      ensure
+        Rails.logger = previous_logger
+        Current.tenant = nil
+      end
+    end
+
+    test "audit hook does NOT fire on non-mutating actions (GET)" do
+      log_io = StringIO.new
+      logger = Logger.new(log_io)
+      logger.formatter = ->(_severity, _time, _progname, msg) { "#{msg}\n" }
+      previous_logger = Rails.logger
+      Rails.logger = ActiveSupport::TaggedLogging.new(logger)
+
+      begin
+        get "/api/scratch/ok"
+        assert_equal 200, response.status
+        refute_match(/\[audit\]/, log_io.string,
+                     "GET actions must not trigger audit recording")
+      ensure
+        Rails.logger = previous_logger
+      end
     end
 
     test "unhandled StandardError → 500 INTERNAL_ERROR envelope with scrubbed message" do

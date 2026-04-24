@@ -27,14 +27,16 @@ module Api
     # because the key was invalid, or because the request bypassed the
     # allowlist incorrectly — we fail closed with UNAUTHORIZED.
     # --------------------------------------------------------------------
+    before_action :capture_request_id
     before_action :require_tenant!
 
     # --------------------------------------------------------------------
-    # Audit hook. Calls Audit::Recorder when it lands in Batch 004. No-op
-    # until then so controllers written in Batch 003 don't reference an
-    # undefined constant.
+    # Audit hook. Delegates to `Audit::Recorder` (lib/audit/recorder.rb,
+    # wired in Batch 005). Runs only on mutating actions (create/update/
+    # destroy). Audit failures log and swallow — never 500 a successful
+    # request because audit couldn't write.
     # --------------------------------------------------------------------
-    after_action :record_audit_trail
+    after_action :record_audit_trail, if: :mutating_action?
 
     # --------------------------------------------------------------------
     # Rescue handlers — ordering is LAST-REGISTERED-WINS in Rails, so the
@@ -72,6 +74,19 @@ module Api
 
     private
 
+    def capture_request_id
+      Current.request_id = request.request_id if Current.respond_to?(:request_id=)
+    end
+
+    # True for the three Rails RESTful mutating actions. Used by the
+    # `record_audit_trail` after_action predicate — audit rows are only
+    # written for state changes, not reads.
+    MUTATING_ACTION_NAMES = %w[create update destroy].freeze
+
+    def mutating_action?
+      MUTATING_ACTION_NAMES.include?(action_name)
+    end
+
     def require_tenant!
       return if Current.tenant.present?
 
@@ -83,14 +98,14 @@ module Api
 
     def record_audit_trail
       return unless defined?(::Audit::Recorder)
-      return unless request.request_method_symbol.in?(%i[post put patch delete])
+      return unless response.successful?
 
       ::Audit::Recorder.record(
-        actor_type: "api_key",
-        actor_id: Current.tenant&.id,
+        actor: Current.tenant || "unauthenticated",
         action: "#{controller_name}##{action_name}",
         entity_type: controller_name.classify,
-        entity_id: params[:id]
+        entity_id: params[:id],
+        tenant_id: Current.tenant&.id
       )
     rescue StandardError => e
       # The audit recorder is safety-critical but not request-critical. Log

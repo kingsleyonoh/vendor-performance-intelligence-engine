@@ -10,6 +10,9 @@
 | `tenant-scoping-pattern.md` | `Current.tenant` (`ActiveSupport::CurrentAttributes`) + `(tenant_id, …)` composite indexes + cross-tenant → 404 (never 403). PRD §2 Architecture Principle 1 invariant. |
 | `auth-guard-pattern.md` | Two-layer auth: `ApiKeyAuthenticator` Rack middleware (authentication, sets `Current.tenant`) + ActionPolicy (authorization, raises on deny). Stateless `Api::*` via `ActionController::API`. |
 | `state-management-pattern.md` | UI multi-step flows: **server is the source of truth**, Turbo Frames for partial updates, ViewComponent for rendering, Stimulus for DOM behavior only. No client-side business state. |
+| `cache-helpers.md` | Three-tier memoization convention: `Cache::RequestCache` (generic `vpi:<ns>:<key>` wrapper) -> `Cache::TenantCache` (api_key_prefix -> tenant_id, 60 s TTL) -> `Cache::ScoringConfigCache` (scoring_rules per tenant, 300 s TTL). PRD §10b. |
+| `session-auth-pattern.md` | Two distinct auth surfaces: Rails 8 built-in session auth (email + password cookie) for UI (`/session`, `/passwords`); `X-API-Key` middleware for `/api/*`. Never cross-pollinate. PRD §5b, §8. |
+| `audit-recorder.md` | `Audit::Recorder.record(...)` — single entry point every mutating controller + job calls. Emits tagged JSON log line in Batch 005; becomes an `audit_log` INSERT in Phase 3. PRD §4.12. |
 
 ## What belongs here
 
