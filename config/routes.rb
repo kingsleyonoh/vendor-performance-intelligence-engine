@@ -13,6 +13,14 @@ Rails.application.routes.draw do
     post "tenants/register",       to: "tenants/registrations#create"
     get  "tenants/me",             to: "tenants/me#show"
     post "tenants/me/rotate-key",  to: "tenants/rotate_key#create"
+
+    # Vendor CRUD (PRD §5.2 + §8b) + nested alias CRUD + top-level
+    # pending-alias queue.
+    get "aliases/pending", to: "vendor_aliases#pending", as: :pending_aliases
+
+    resources :vendors do
+      resources :aliases, controller: "vendor_aliases"
+    end
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

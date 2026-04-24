@@ -14,6 +14,8 @@
 | `session-auth-pattern.md` | Two distinct auth surfaces: Rails 8 built-in session auth (email + password cookie) for UI (`/session`, `/passwords`); `X-API-Key` middleware for `/api/*`. Never cross-pollinate. PRD §5b, §8. |
 | `audit-recorder.md` | `Audit::Recorder.record(...)` — single entry point every mutating controller + job calls. Emits tagged JSON log line in Batch 005; becomes an `audit_log` INSERT in Phase 3. PRD §4.12. |
 | `tenant-snapshot-shape.md` | `Tenants::CaptureSnapshot.call(tenant_id)` — frozen `{id, slug, §4.T identity, snapshot_at}` hash that binds every template surface (PDF, Hub payload, email). Captured once at alert/report emission; never re-queried. PRD §4.T + §5.5 + §5.6. |
+| `name-normalization.md` | `Ingestion::NameNormalizer.call(raw)` — pure function: raw vendor name → deterministic fuzzy-match key (lowercased, ASCII-ish, legal-suffix-stripped). Consumed by `Vendor` model (`before_validation`) + `Ingestion::VendorResolver`. PRD §5.2. |
+| `vendor-resolution-flow.md` | `Ingestion::VendorResolver.resolve(...)` — the 5-rung ladder that translates `(source_system, source_ref, hints)` → canonical `vendor_id` (+ `vendor_alias` row for idempotency). Confidence levels 1.00 / 0.85 / 0.70. PRD §5.2. |
 
 ## What belongs here
 

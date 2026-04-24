@@ -20,6 +20,14 @@ module Api
   class BaseController < ActionController::API
     include ActionPolicy::Controller
 
+    # ActionPolicy authorization targets. v1 has no per-tenant user model —
+    # the API-key holder IS the admin (see Batch 007 DESIGN_DECISION).
+    # `:user` is kept nullable (see ApplicationPolicy) so callers that have
+    # no authenticated UI session still resolve. `:tenant` is the real
+    # authorization context, read from Current.tenant.
+    authorize :user, through: :current_user_for_policy
+    authorize :tenant, through: :current_tenant
+
     # --------------------------------------------------------------------
     # Auth gate. ApiKeyAuthenticator middleware (Phase 1) sets Current.tenant
     # from the X-API-Key header BEFORE this before_action runs. If the
@@ -57,6 +65,20 @@ module Api
     #   JsonApiError.http_status_for(code)
     # - message: human-readable string; defaults to a generic per-code text
     # - details: optional array of { path:, issue: } hashes
+    # ActionPolicy authorization context. Default `user` context is unused
+    # in v1 (the API-key holder IS the admin — see Batch 007 design
+    # decision). Policies declare `authorize :tenant, through: :current_tenant`
+    # and read directly from `Current.tenant` where needed.
+    def current_tenant
+      Current.tenant
+    end
+
+    # API surface has no UI session user; return nil. ApplicationPolicy
+    # declares `authorize :user, allow_nil: true` so this is safe.
+    def current_user_for_policy
+      nil
+    end
+
     def render_api_error(code, status: nil, message: nil, details: nil)
       normalized_code = code.to_s.upcase
       http_status = status || Errors::JsonApiError.http_status_for(normalized_code)

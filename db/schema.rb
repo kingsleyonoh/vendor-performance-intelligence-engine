@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_24_150300) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_24_160100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -82,7 +82,51 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_24_150300) do
     t.index ["tenant_id"], name: "index_users_on_tenant_id"
   end
 
+  create_table "vendor_aliases", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "tenant_id", null: false
+    t.uuid "vendor_id", null: false
+    t.text "source_system", null: false
+    t.text "source_ref", null: false
+    t.text "alias_text"
+    t.decimal "confidence", precision: 4, scale: 3, null: false
+    t.boolean "is_confirmed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "is_confirmed"], name: "index_vendor_aliases_pending", where: "(is_confirmed = false)"
+    t.index ["tenant_id", "source_system", "source_ref"], name: "index_vendor_aliases_on_tenant_system_ref", unique: true
+    t.index ["tenant_id", "vendor_id"], name: "index_vendor_aliases_on_tenant_id_and_vendor_id"
+    t.index ["tenant_id"], name: "index_vendor_aliases_on_tenant_id"
+    t.index ["vendor_id"], name: "index_vendor_aliases_on_vendor_id"
+    t.check_constraint "confidence >= 0.0 AND confidence <= 1.0", name: "vendor_aliases_confidence_chk"
+    t.check_constraint "source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text])", name: "vendor_aliases_source_system_chk"
+  end
+
+  create_table "vendors", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "tenant_id", null: false
+    t.text "canonical_name", null: false
+    t.text "normalized_name", null: false
+    t.text "tax_id"
+    t.text "country_code"
+    t.text "category"
+    t.bigint "annual_spend_cents"
+    t.text "currency"
+    t.text "status", default: "active", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "category"], name: "index_vendors_on_tenant_id_and_category_where_present", where: "(category IS NOT NULL)"
+    t.index ["tenant_id", "normalized_name"], name: "index_vendors_on_tenant_id_and_normalized_name"
+    t.index ["tenant_id", "status"], name: "index_vendors_on_tenant_id_and_status"
+    t.index ["tenant_id", "tax_id"], name: "index_vendors_on_tenant_id_and_tax_id_where_present", unique: true, where: "(tax_id IS NOT NULL)"
+    t.index ["tenant_id"], name: "index_vendors_on_tenant_id"
+    t.check_constraint "country_code IS NULL OR country_code ~ '^[A-Z]{2}$'::text", name: "vendors_country_code_chk"
+    t.check_constraint "status = ANY (ARRAY['active'::text, 'watchlist'::text, 'terminated'::text, 'merged'::text])", name: "vendors_status_chk"
+  end
+
   add_foreign_key "sessions", "tenants"
   add_foreign_key "sessions", "users"
   add_foreign_key "users", "tenants"
+  add_foreign_key "vendor_aliases", "tenants"
+  add_foreign_key "vendor_aliases", "vendors", on_delete: :cascade
+  add_foreign_key "vendors", "tenants"
 end

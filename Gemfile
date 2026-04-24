@@ -87,6 +87,11 @@ gem "sentry-rails", "~> 5.21"
 # View components — ViewComponent for PDF + UI rendering (PRD §3, §9)
 gem "view_component", "~> 3.18"
 
+# Levenshtein distance for vendor alias fuzzy-match (PRD §5.2 rung 3).
+# Ruby stdlib doesn't ship an edit-distance implementation; this gem gives
+# us `Text::Levenshtein.distance(a, b)` with a pure-Ruby fallback.
+gem "text", "~> 1.3"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
