@@ -1,0 +1,26 @@
+<div class="rounded-lg shadow-sm p-4 bg-white" data-testid="band-change-list">
+  <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">
+    Top band changes (last 7 days)
+  </h2>
+  <% if changes.empty? %>
+    <p class="text-sm text-gray-400" data-testid="band-change-empty">No band changes in the last 7 days.</p>
+  <% else %>
+    <ul class="divide-y divide-gray-100">
+      <% changes.each do |change| %>
+        <li class="py-2 flex items-center justify-between" data-testid="band-change-row">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900"><%= change[:vendor_name] %></p>
+            <p class="text-xs text-gray-500">
+              <span style="color: <%= band_color(change[:previous_band]) %>;"><%= change[:previous_band] %></span>
+              &rarr;
+              <span style="color: <%= band_color(change[:current_band]) %>;"><%= change[:current_band] %></span>
+            </p>
+          </div>
+          <span class="text-sm font-mono <%= change[:delta] >= 0 ? 'text-red-600' : 'text-green-600' %>">
+            <%= change[:delta] >= 0 ? "+" : "" %><%= change[:delta] %>
+          </span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

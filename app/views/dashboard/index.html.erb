@@ -1,0 +1,60 @@
+<% content_for :title, "Dashboard — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-6">
+  <header>
+    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <p class="text-sm text-gray-500">Daily vendor review for <%= UiBrand.display_name_for(Current.tenant) %>.</p>
+  </header>
+
+  <!-- Status counts -->
+  <%= turbo_frame_tag "dashboard-status-counts" do %>
+    <section>
+      <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">Total vendors by status</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <% %w[active watchlist terminated merged].each do |status| %>
+          <%= render Dashboard::KpiCardComponent.new(
+                title: status.capitalize,
+                value: @status_counts.fetch(status, 0),
+                testid: "status-#{status}"
+              ) %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <!-- Band counts -->
+  <%= turbo_frame_tag "dashboard-band-counts" do %>
+    <section>
+      <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">Risk band distribution</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <% %w[low medium high critical].each do |band| %>
+          <%= render Dashboard::KpiCardComponent.new(
+                title: band.capitalize,
+                value: @band_counts.fetch(band, 0),
+                band: band,
+                testid: "band-#{band}"
+              ) %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <!-- Band changes + alerts -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2">
+      <%= turbo_frame_tag "dashboard-band-changes" do %>
+        <%= render Dashboard::BandChangeListComponent.new(changes: @band_changes) %>
+      <% end %>
+    </div>
+    <div>
+      <%= turbo_frame_tag "dashboard-unack-alerts" do %>
+        <%= render Dashboard::KpiCardComponent.new(
+              title: "Unacknowledged alerts",
+              value: @unacknowledged_alerts_count,
+              subtitle: "Risk alerts pipeline — Phase 2",
+              testid: "unack-alerts"
+            ) %>
+      <% end %>
+    </div>
+  </div>
+</div>

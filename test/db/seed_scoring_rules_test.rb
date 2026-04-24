@@ -9,10 +9,14 @@ class SeedScoringRulesTest < ActiveSupport::TestCase
   i_suck_and_my_tests_are_order_dependent!
 
   setup do
+    # vendor_scores FK-reference scoring_rules; purge dependents first
+    # so this non-transactional test can wipe and reseed cleanly.
+    VendorScore.delete_all
     ScoringRule.delete_all
   end
 
   teardown do
+    VendorScore.delete_all
     ScoringRule.delete_all
   end
 

@@ -1,0 +1,115 @@
+# Score snapshots used by dashboard KPI counts + vendors-list band filter.
+# ≥1 score per active vendor; bands spread across low/medium/high/critical.
+# Some older rows simulate a band-change history for the "5 largest band
+# changes in last 7 days" dashboard widget.
+
+<% category_scores = { financial: 30.0, operational: 30.0, contractual: 30.0, integration: 30.0, transactional: 30.0 }.to_json %>
+
+# ---------- Acme — current scores ----------
+acme_alpha_current:
+  tenant: acme_gmbh_de
+  vendor: acme_alpha
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 15.5
+  band: low
+  trend: stable
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 10
+  computed_at: <%= 1.day.ago.iso8601 %>
+  created_at: <%= 1.day.ago.iso8601 %>
+  updated_at: <%= 1.day.ago.iso8601 %>
+
+acme_beta_current:
+  tenant: acme_gmbh_de
+  vendor: acme_beta
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 42.0
+  band: medium
+  trend: degrading
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 8
+  computed_at: <%= 2.days.ago.iso8601 %>
+  created_at: <%= 2.days.ago.iso8601 %>
+  updated_at: <%= 2.days.ago.iso8601 %>
+
+acme_gamma_current:
+  tenant: acme_gmbh_de
+  vendor: acme_gamma
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 82.0
+  band: critical
+  trend: degrading
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 12
+  computed_at: <%= 3.days.ago.iso8601 %>
+  created_at: <%= 3.days.ago.iso8601 %>
+  updated_at: <%= 3.days.ago.iso8601 %>
+
+# Older score for acme_beta — shows degrading trend within last 7 days
+# (previous band=low, now medium → band change for dashboard widget)
+acme_beta_previous:
+  tenant: acme_gmbh_de
+  vendor: acme_beta
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 20.0
+  band: low
+  trend: stable
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 6
+  computed_at: <%= 6.days.ago.iso8601 %>
+  created_at: <%= 6.days.ago.iso8601 %>
+  updated_at: <%= 6.days.ago.iso8601 %>
+
+# ---------- Globex — current scores ----------
+globex_zeta_current:
+  tenant: globex_inc_us
+  vendor: globex_zeta
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:globex_default, :uuid) %>
+  composite_score: 10.0
+  band: low
+  trend: improving
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 15
+  computed_at: <%= 1.day.ago.iso8601 %>
+  created_at: <%= 1.day.ago.iso8601 %>
+  updated_at: <%= 1.day.ago.iso8601 %>
+
+globex_eta_current:
+  tenant: globex_inc_us
+  vendor: globex_eta
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:globex_default, :uuid) %>
+  composite_score: 60.0
+  band: high
+  trend: degrading
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 9
+  computed_at: <%= 1.day.ago.iso8601 %>
+  created_at: <%= 1.day.ago.iso8601 %>
+  updated_at: <%= 1.day.ago.iso8601 %>
+
+globex_theta_current:
+  tenant: globex_inc_us
+  vendor: globex_theta
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:globex_default, :uuid) %>
+  composite_score: 35.0
+  band: medium
+  trend: stable
+  category_scores: <%= category_scores %>
+  top_contributors: <%= [].to_json %>
+  window_days: 90
+  signals_considered_count: 7
+  computed_at: <%= 2.days.ago.iso8601 %>
+  created_at: <%= 2.days.ago.iso8601 %>
+  updated_at: <%= 2.days.ago.iso8601 %>

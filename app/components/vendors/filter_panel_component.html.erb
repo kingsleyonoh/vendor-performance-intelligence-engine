@@ -1,0 +1,44 @@
+<form action="<%= vendors_path %>" method="get" class="rounded-lg bg-white shadow-sm p-4 mb-4 flex flex-wrap gap-4 items-end" data-testid="vendors-filter-panel">
+  <div>
+    <label class="block text-xs font-medium text-gray-600 mb-1">Search</label>
+    <input type="text" name="search" value="<%= filters[:search] %>"
+           placeholder="Vendor name..."
+           class="rounded-md border border-gray-300 px-3 py-1 text-sm">
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-gray-600 mb-1">Band</label>
+    <select name="band[]" multiple class="rounded-md border border-gray-300 px-2 py-1 text-sm" data-testid="filter-band">
+      <% BANDS.each do |b| %>
+        <option value="<%= b %>" <%= "selected" if filters[:band].include?(b) %>><%= b %></option>
+      <% end %>
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+    <select name="status[]" multiple class="rounded-md border border-gray-300 px-2 py-1 text-sm" data-testid="filter-status">
+      <% Vendor::STATUSES.each do |s| %>
+        <option value="<%= s %>" <%= "selected" if filters[:status].include?(s) %>><%= s %></option>
+      <% end %>
+    </select>
+  </div>
+
+  <% if categories.any? %>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Category</label>
+      <select name="category[]" multiple class="rounded-md border border-gray-300 px-2 py-1 text-sm" data-testid="filter-category">
+        <% categories.each do |c| %>
+          <option value="<%= c %>" <%= "selected" if filters[:category].include?(c) %>><%= c %></option>
+        <% end %>
+      </select>
+    </div>
+  <% end %>
+
+  <div>
+    <button type="submit" class="rounded-md px-3 py-1 text-sm font-medium text-white" style="background-color: var(--brand-accent);">
+      Apply
+    </button>
+    <%= link_to "Reset", vendors_path, class: "ml-2 text-sm text-gray-500 underline" %>
+  </div>
+</form>

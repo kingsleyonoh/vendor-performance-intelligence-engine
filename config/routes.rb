@@ -1,7 +1,17 @@
 Rails.application.routes.draw do
   resource :session
   resources :passwords, param: :token
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
+
+  # ----------------------------------------------------------------
+  # UI surface — PRD §5b, §8. Session-auth-gated operator pages.
+  # ----------------------------------------------------------------
+  root to: "dashboard#index"
+
+  resources :vendors, only: [:index] do
+    collection do
+      post :bulk
+    end
+  end
 
   # ----------------------------------------------------------------
   # API surface — PRD §8b

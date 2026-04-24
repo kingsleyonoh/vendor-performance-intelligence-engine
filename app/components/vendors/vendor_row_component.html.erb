@@ -1,0 +1,12 @@
+<tr class="border-b border-gray-100 hover:bg-gray-50" data-testid="vendor-row" data-vendor-id="<%= vendor.id %>">
+  <td class="px-3 py-2">
+    <input type="checkbox" name="vendor_ids[]" value="<%= vendor.id %>" class="rounded">
+  </td>
+  <td class="px-3 py-2 text-sm font-medium text-gray-900"><%= vendor.canonical_name %></td>
+  <td class="px-3 py-2"><%= render Vendors::BandPillComponent.new(band: band) %></td>
+  <td class="px-3 py-2 text-sm text-gray-700 font-mono"><%= composite_score&.round(1) || "—" %></td>
+  <td class="px-3 py-2 text-sm text-gray-600"><%= vendor.category || "—" %></td>
+  <td class="px-3 py-2 text-sm text-gray-600"><%= vendor.status %></td>
+  <td class="px-3 py-2 text-sm text-gray-600 font-mono"><%= formatted_spend %></td>
+  <td class="px-3 py-2 text-xs text-gray-500"><%= last_score_at %></td>
+</tr>

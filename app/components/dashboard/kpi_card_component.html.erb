@@ -1,0 +1,9 @@
+<div class="rounded-lg shadow-sm p-4 bg-white border-l-4"
+     style="border-left-color: <%= accent_color %>;"
+     <%= "data-testid=#{testid}".html_safe if testid %>>
+  <p class="text-xs uppercase tracking-wide font-medium text-gray-500"><%= title %></p>
+  <p class="mt-1 text-3xl font-bold text-gray-900"><%= value %></p>
+  <% if subtitle %>
+    <p class="mt-1 text-xs text-gray-500"><%= subtitle %></p>
+  <% end %>
+</div>

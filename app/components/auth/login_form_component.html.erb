@@ -1,0 +1,36 @@
+<% if alert.present? %>
+  <p class="py-2 px-3 mb-4 text-sm rounded-md" style="background-color: #742A2A; color: #FEB2B2;" data-testid="flash-alert">
+    <%= alert %>
+  </p>
+<% end %>
+
+<%= form_with url: session_url, class: "space-y-4" do |form| %>
+  <div>
+    <%= form.label :email_address, "Email address", class: "block text-sm font-medium mb-1", style: "color: #E2E8F0;" %>
+    <%= form.email_field :email_address,
+          required: true,
+          autofocus: true,
+          autocomplete: "username",
+          value: email,
+          class: "block w-full rounded-md px-3 py-2 text-white placeholder-gray-400",
+          style: "background-color: #2D3748; border: 1px solid #4A5568;" %>
+  </div>
+
+  <div>
+    <%= form.label :password, "Password", class: "block text-sm font-medium mb-1", style: "color: #E2E8F0;" %>
+    <%= form.password_field :password,
+          required: true,
+          autocomplete: "current-password",
+          maxlength: 72,
+          class: "block w-full rounded-md px-3 py-2 text-white placeholder-gray-400",
+          style: "background-color: #2D3748; border: 1px solid #4A5568;" %>
+  </div>
+
+  <%= form.submit "Sign in",
+        class: "w-full rounded-md px-4 py-2 font-semibold text-white cursor-pointer",
+        style: "background-color: var(--brand-accent);" %>
+
+  <div class="text-sm text-center pt-2">
+    <%= link_to "Forgot password?", new_password_path, class: "underline", style: "color: #A0AEC0;" %>
+  </div>
+<% end %>

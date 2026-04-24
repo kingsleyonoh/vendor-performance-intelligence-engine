@@ -1,0 +1,13 @@
+<% if band %>
+  <span class="inline-block rounded-full px-3 py-0.5 text-xs font-semibold text-white"
+        style="background-color: <%= background %>;"
+        data-testid="band-pill"
+        data-band="<%= band %>">
+    <%= band %>
+  </span>
+<% else %>
+  <span class="inline-block rounded-full px-3 py-0.5 text-xs font-medium bg-gray-200 text-gray-500"
+        data-testid="band-pill-none">
+    no score
+  </span>
+<% end %>

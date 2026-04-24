@@ -24,6 +24,10 @@ class VpiSetupTest < ActiveSupport::TestCase
     # run against an initially-empty tenants table so first-run branch is
     # observable. Use DELETE to also purge has_many :restrict_with_exception
     # children (users/sessions) — fixtures load them too.
+    VendorScore.delete_all
+    VendorSignal.delete_all
+    VendorAlias.delete_all
+    Vendor.delete_all
     ScoringRule.delete_all
     User.delete_all
     Session.delete_all
@@ -33,6 +37,10 @@ class VpiSetupTest < ActiveSupport::TestCase
   teardown do
     # Reset tenant table so the rest of the suite's fixtures re-hydrate
     # deterministically (parallelize off in this file — see below).
+    VendorScore.delete_all
+    VendorSignal.delete_all
+    VendorAlias.delete_all
+    Vendor.delete_all
     ScoringRule.delete_all
     User.delete_all
     Session.delete_all

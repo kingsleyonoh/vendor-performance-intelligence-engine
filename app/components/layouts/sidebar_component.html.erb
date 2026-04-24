@@ -1,0 +1,23 @@
+<aside data-testid="app-sidebar" class="w-56 min-h-screen border-r" style="background-color: #1A202C; color: #E2E8F0;">
+  <nav class="p-4 space-y-1">
+    <% items.each do |item| %>
+      <% is_active = active?(item) %>
+      <% disabled = item[:disabled] %>
+      <% bg = is_active ? "var(--brand-accent)" : "transparent" %>
+      <% color = is_active ? "white" : (disabled ? "#718096" : "#E2E8F0") %>
+      <% if disabled %>
+        <span class="block px-3 py-2 rounded-md text-sm font-medium cursor-not-allowed"
+              style="color: <%= color %>;"
+              data-testid="sidebar-<%= item[:key] %>">
+          <%= item[:label] %>
+          <span class="ml-2 text-xs opacity-60">(soon)</span>
+        </span>
+      <% else %>
+        <%= link_to item[:label], item[:path],
+              class: "block px-3 py-2 rounded-md text-sm font-medium",
+              style: "background-color: #{bg}; color: #{color};",
+              data: { testid: "sidebar-#{item[:key]}" } %>
+      <% end %>
+    <% end %>
+  </nav>
+</aside>
