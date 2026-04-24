@@ -15,14 +15,17 @@ require "test_helper"
 class RateLimitSmokeTest < ActionDispatch::IntegrationTest
   setup do
     # Flush any pre-existing Rack::Attack counters so a prior test run does not
-    # push us over the threshold before we start counting.
+    # push us over the threshold before we start counting. Parallel workers
+    # share the Redis-backed cache store, so we use a per-worker discriminator
+    # header (`X-Test-Throttle-Id`) instead of `req.ip` to avoid cross-worker
+    # counter contamination during the suite.
     Rack::Attack.cache.store.clear if Rack::Attack.cache.store.respond_to?(:clear)
 
-    # Replace the production throttle with a tight one for deterministic tests.
-    # Rack::Attack keeps throttles in a hash — overwriting by the same name
-    # is the documented override path.
+    @test_throttle_id = "smoke-#{Process.pid}-#{Time.now.to_f}"
     Rack::Attack.throttles.clear
-    Rack::Attack.throttle("test/req/ip", limit: 3, period: 60) { |req| req.ip }
+    Rack::Attack.throttle("test/req/id", limit: 3, period: 60) do |req|
+      req.get_header("HTTP_X_TEST_THROTTLE_ID")
+    end
   end
 
   teardown do
@@ -39,15 +42,17 @@ class RateLimitSmokeTest < ActionDispatch::IntegrationTest
   end
 
   test "baseline throttle returns 429 with JSON envelope once limit exceeded" do
+    headers = { "X-Test-Throttle-Id" => @test_throttle_id }
+
     # Fire `limit` requests — all must succeed (status != 429).
     3.times do |i|
-      get "/up"
+      get "/up", headers: headers
       refute_equal 429, response.status,
         "request ##{i + 1} hit 429 prematurely (limit should be 3)"
     end
 
     # The 4th request must be throttled.
-    get "/up"
+    get "/up", headers: headers
     assert_equal 429, response.status
 
     assert_match %r{application/json}, response.headers["Content-Type"]

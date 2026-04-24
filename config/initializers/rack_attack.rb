@@ -31,6 +31,14 @@ Rack::Attack.throttle("req/ip", limit: 600, period: 60) do |req|
   req.ip
 end
 
+# Per-endpoint throttle: self-registration (PRD §5.1 + §8b) — 5/min/IP.
+# Public endpoint with no auth; a tight per-IP cap prevents enumeration /
+# slug-squatting. Scope narrows the matcher to POST /api/tenants/register
+# only so other allowlisted routes aren't affected.
+Rack::Attack.throttle("tenants/register/ip", limit: 5, period: 60) do |req|
+  req.ip if req.path == "/api/tenants/register" && req.post?
+end
+
 # When throttled, emit the PRD §8b error envelope so clients don't need a
 # second parser for 429s.
 Rack::Attack.throttled_responder = lambda do |_request|

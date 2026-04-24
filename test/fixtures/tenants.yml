@@ -28,7 +28,7 @@ globex_inc_us:
   name: Globex Inc (ops)
   slug: globex-inc-us
   api_key_hash: <%= Digest::SHA256.hexdigest("vpi_test_globex_key_00000000000000000") %>
-  api_key_prefix: vpi_test_glx
+  api_key_prefix: vpi_test_glo
   is_active: true
   legal_name: Globex Inc.
   full_legal_name: Globex International, Inc.

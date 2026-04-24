@@ -34,5 +34,16 @@ module Vpi
     # + the one `req/ip` baseline rule. Middleware must be registered here so
     # it wraps the full stack (not only routed endpoints).
     config.middleware.use Rack::Attack
+
+    # API-key authentication (PRD §5.1). `lib/auth/api_key_authenticator.rb`
+    # resolves `X-API-Key` -> `Current.tenant` for every `/api/*` request
+    # except the documented allowlist (register / health / Hub ingress). Must
+    # run AFTER Rack::Attack so rate limits kick in before DB lookups, and
+    # BEFORE the Rails executor so Current.tenant is set on the same thread
+    # as the controller action. Rails' MiddlewareStack resolves the class
+    # at build time — Zeitwerk autoloads `lib/auth/api_key_authenticator.rb`
+    # via `config.autoload_lib` above.
+    require_relative "../lib/auth/api_key_authenticator"
+    config.middleware.insert_after Rack::Attack, Auth::ApiKeyAuthenticator
   end
 end

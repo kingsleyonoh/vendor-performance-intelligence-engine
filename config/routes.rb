@@ -3,6 +3,18 @@ Rails.application.routes.draw do
   resources :passwords, param: :token
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
+  # ----------------------------------------------------------------
+  # API surface — PRD §8b
+  # ----------------------------------------------------------------
+  namespace :api do
+    # Tenant identity + self-registration + rotation (PRD §5.1 + §8b).
+    # `register` is public (allowlisted in ApiKeyAuthenticator);
+    # `me` + `me/rotate-key` require a valid X-API-Key.
+    post "tenants/register",       to: "tenants/registrations#create"
+    get  "tenants/me",             to: "tenants/me#show"
+    post "tenants/me/rotate-key",  to: "tenants/rotate_key#create"
+  end
+
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
