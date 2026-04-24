@@ -28,5 +28,11 @@ module Vpi
     # Sidekiq is the canonical queue for the ecosystem + matches the 15-job
     # table in `.claude/rules/CODEBASE_CONTEXT_MODULES.md`.
     config.active_job.queue_adapter = :sidekiq
+
+    # Rate limiting — Rack::Attack baseline throttle (PRD §8b / §10b).
+    # Initializer at `config/initializers/rack_attack.rb` configures the store
+    # + the one `req/ip` baseline rule. Middleware must be registered here so
+    # it wraps the full stack (not only routed endpoints).
+    config.middleware.use Rack::Attack
   end
 end

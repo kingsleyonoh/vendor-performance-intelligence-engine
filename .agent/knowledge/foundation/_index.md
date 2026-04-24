@@ -1,12 +1,15 @@
 # Shared Foundation — Index
 
-> **One file per foundation primitive.** This index is a human-readable catalog, rewritten by the AI whenever a sibling file is added, renamed, or removed. Never append to a single growing table — write a new sibling instead. See `.agent/rules/CODING_STANDARDS.md` — "Append-Only Knowledge Files Banned."
+> **One file per foundation primitive.** This index is a human-readable catalog, rewritten by the AI whenever a sibling file is added, renamed, or removed. Never append to a single growing table — write a new sibling instead. See `.claude/rules/CODING_STANDARDS.md` — "Append-Only Knowledge Files Banned."
 
 ## Catalog
 
 | File | Summary |
 |------|---------|
-| `EXAMPLE.md` | Template showing the expected shape — delete once a real foundation primitive exists. |
+| `api-error-response-shape.md` | JSON:API-style `{error:{code,message,details?}}` envelope + the 8 canonical codes + HTTP status mapping (PRD §8b). Bound by every controller, middleware, and 429 emitter. |
+| `tenant-scoping-pattern.md` | `Current.tenant` (`ActiveSupport::CurrentAttributes`) + `(tenant_id, …)` composite indexes + cross-tenant → 404 (never 403). PRD §2 Architecture Principle 1 invariant. |
+| `auth-guard-pattern.md` | Two-layer auth: `ApiKeyAuthenticator` Rack middleware (authentication, sets `Current.tenant`) + ActionPolicy (authorization, raises on deny). Stateless `Api::*` via `ActionController::API`. |
+| `state-management-pattern.md` | UI multi-step flows: **server is the source of truth**, Turbo Frames for partial updates, ViewComponent for rendering, Stimulus for DOM behavior only. No client-side business state. |
 
 ## What belongs here
 
@@ -19,8 +22,9 @@ Primitives imported by 3+ modules or that establish a project-wide contract. Exa
 ## How to add a new foundation primitive
 
 1. Filename pattern: `category-slug.md` (e.g. `core-config-loading.md`, `db-pool-singleton.md`, `plugin-auth.md`).
-2. Use the What it establishes / Files / When to read shape from `EXAMPLE.md`.
+2. Use the What it establishes / Files / When to read shape (mirror one of the existing files).
 3. Add one row to the `## Catalog` table above.
+4. Mirror the file into `.claude/knowledge/foundation/` (dual-mirror convention).
 
 ## Why directory-per-kind
 

@@ -69,6 +69,14 @@ gem "wkhtmltopdf-binary", "~> 0.12"
 # Rate limiting — Rack::Attack (PRD §8b, §10b)
 gem "rack-attack", "~> 6.7"
 
+# CORS — browser preflight for `/api/*` (driven by ALLOWED_ORIGINS env, PRD §14)
+gem "rack-cors", "~> 2.0"
+
+# Redis client — backs Rack::Attack's RedisCacheStore (PRD §10b). Note that
+# sidekiq ships redis-client but `ActiveSupport::Cache::RedisCacheStore`
+# specifically needs the full `redis` gem.
+gem "redis", "~> 5.3"
+
 # Structured logging — Lograge → Axiom JSON (PRD §10b)
 gem "lograge", "~> 0.14"
 

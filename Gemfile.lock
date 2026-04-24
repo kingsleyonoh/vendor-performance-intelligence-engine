@@ -283,6 +283,8 @@ GEM
     rack (3.2.6)
     rack-attack (6.8.0)
       rack (>= 1.0, < 4)
+    rack-cors (2.0.2)
+      rack (>= 2.0.0)
     rack-session (2.1.2)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -326,6 +328,8 @@ GEM
       erb
       psych (>= 4.0.0)
       tsort
+    redis (5.4.1)
+      redis-client (>= 0.22.0)
     redis-client (0.28.0)
       connection_pool
     regexp_parser (2.12.0)
@@ -490,7 +494,9 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rack-attack (~> 6.7)
+  rack-cors (~> 2.0)
   rails (~> 8.0.5)
+  redis (~> 5.3)
   rubocop-rails-omakase
   selenium-webdriver
   sentry-rails (~> 5.21)
