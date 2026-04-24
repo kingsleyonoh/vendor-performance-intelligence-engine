@@ -16,6 +16,7 @@
 | `tenant-snapshot-shape.md` | `Tenants::CaptureSnapshot.call(tenant_id)` — frozen `{id, slug, §4.T identity, snapshot_at}` hash that binds every template surface (PDF, Hub payload, email). Captured once at alert/report emission; never re-queried. PRD §4.T + §5.5 + §5.6. |
 | `name-normalization.md` | `Ingestion::NameNormalizer.call(raw)` — pure function: raw vendor name → deterministic fuzzy-match key (lowercased, ASCII-ish, legal-suffix-stripped). Consumed by `Vendor` model (`before_validation`) + `Ingestion::VendorResolver`. PRD §5.2. |
 | `vendor-resolution-flow.md` | `Ingestion::VendorResolver.resolve(...)` — the 5-rung ladder that translates `(source_system, source_ref, hints)` → canonical `vendor_id` (+ `vendor_alias` row for idempotency). Confidence levels 1.00 / 0.85 / 0.70. PRD §5.2. |
+| `scoring-primitives.md` | `Scoring::SignalScalers.scale(...)` + `Scoring::TimeDecay.weight(...)` — two pure functions the composite scorer composes. Scaler maps every `value_type` × `direction` to 0..100 contribution; decay is `0.5 ^ (age / half_life)`. Clamp-on-data, raise-on-config. PRD §5.4. |
 
 ## What belongs here
 

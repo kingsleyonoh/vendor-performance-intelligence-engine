@@ -24,6 +24,14 @@ module Vpi
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
+    # SQL schema format — required because `vendor_signals` uses native
+    # Postgres range partitioning (PRD §4.5). The Ruby schema DSL does not
+    # emit `PARTITION BY RANGE` nor CREATE TRIGGER, so `schema.rb` produces
+    # an unloadable schema that dumps partitions as inherited tables. Using
+    # `:sql` dumps the live Postgres DDL via `pg_dump`, which round-trips
+    # partitioning + triggers + CHECK constraints cleanly.
+    config.active_record.schema_format = :sql
+
     # ActiveJob → Sidekiq 7 (PRD §3, §7). VPI opts OUT of Solid Queue because
     # Sidekiq is the canonical queue for the ecosystem + matches the 15-job
     # table in `.claude/rules/CODEBASE_CONTEXT_MODULES.md`.

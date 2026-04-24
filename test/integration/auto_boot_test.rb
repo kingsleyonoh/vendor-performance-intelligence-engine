@@ -40,14 +40,18 @@ class AutoBootTest < ActiveSupport::TestCase
 
     load @initializer_path.to_s
 
-    before = SignalDefinition.count
-
     # Capture stdout from the rake task to avoid cluttering test output.
+    # Idempotency contract: running the seed twice must leave the row count
+    # stable. Baseline after first run (which may load rows on an empty DB)
+    # compared to count after second run.
     capture_io { ::AutoBoot.run }
-    capture_io { ::AutoBoot.run }
+    after_first = SignalDefinition.count
 
-    after = SignalDefinition.count
-    assert_equal before, after, "seed reruns must be idempotent"
+    capture_io { ::AutoBoot.run }
+    after_second = SignalDefinition.count
+
+    assert_equal after_first, after_second, "seed reruns must be idempotent"
+    assert after_first.positive?, "first seed run should populate signal_definitions"
   ensure
     ENV.delete("AUTO_MIGRATE")
     ENV.delete("AUTO_SEED")

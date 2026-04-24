@@ -48,5 +48,12 @@ end
 # connections, autoloaders) is fully booted before we touch rake tasks. The
 # hook is a no-op when both flags are off (default in dev/test).
 Rails.application.config.after_initialize do
+  # Never auto-migrate or auto-seed in the test environment — the test
+  # harness owns schema loading (`db:test:prepare` via structure.sql) and
+  # fixture hydration. Running migrations a second time on top of a
+  # structure.sql-loaded schema re-creates the `vendor_signals_enforce_append_only`
+  # function and trips `psql --set ON_ERROR_STOP=1`.
+  next if Rails.env.test?
+
   AutoBoot.run if AutoBoot.migrate_enabled? || AutoBoot.seed_enabled?
 end

@@ -67,6 +67,12 @@ namespace :vpi do
       after_state: { slug: tenant.slug }
     )
 
+    # Re-run the seeds after creating the default tenant so the default
+    # scoring_rule (PRD §4.7) is seeded for it. `db/seeds.rb` is idempotent
+    # upsert-by-(tenant_id, name) so this is safe to run twice.
+    Rake::Task["db:seed"].reenable
+    Rake::Task["db:seed"].invoke
+
     puts ""
     puts "===================================="
     puts "  First-run setup complete!"

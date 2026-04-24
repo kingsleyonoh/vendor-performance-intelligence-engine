@@ -26,3 +26,32 @@ definitions.each do |attrs|
 end
 
 puts "[seeds] signal_definitions: #{SignalDefinition.count} rows"
+
+# ---------------------------------------------------------------------------
+# Default scoring_rule per tenant — PRD §4.7 + §5.4. Upserts a "Default v1"
+# rule for every persistent tenant so the composite scorer has an active
+# rule to read on first boot. Operator clones + tunes; the clone activation
+# atomically deactivates Default v1 via `ScoringRule#deactivate_sibling_if_activating`.
+# ---------------------------------------------------------------------------
+rules_seed_path = Rails.root.join("db", "seeds", "scoring_rules.yml")
+if File.exist?(rules_seed_path)
+  rule_template = YAML.load_file(rules_seed_path)
+  unless rule_template.is_a?(Hash)
+    raise "[seeds] #{rules_seed_path} must be a YAML hash (got #{rule_template.class})"
+  end
+
+  Tenant.find_each do |tenant|
+    rule = ScoringRule.find_or_initialize_by(tenant_id: tenant.id, name: rule_template["name"])
+    rule.assign_attributes(
+      category_weights: rule_template["category_weights"],
+      signal_weight_overrides: rule_template["signal_weight_overrides"] || {},
+      band_thresholds: rule_template["band_thresholds"],
+      window_days: rule_template["window_days"],
+      time_decay_half_life_days: rule_template["time_decay_half_life_days"],
+      is_active: rule_template["is_active"]
+    )
+    rule.save!
+  end
+
+  puts "[seeds] scoring_rules: #{ScoringRule.count} rows across #{Tenant.count} tenants"
+end

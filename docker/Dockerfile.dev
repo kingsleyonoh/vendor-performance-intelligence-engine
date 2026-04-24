@@ -45,7 +45,6 @@ RUN apt-get update \
       libvips \
       libyaml-dev \
       pkg-config \
-      postgresql-client \
       tzdata \
       zlib1g-dev \
       # Playwright / Chromium runtime system libs
@@ -68,6 +67,21 @@ RUN apt-get update \
       libxss1 \
       libxtst6 \
       xvfb \
+ && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# PostgreSQL 16 client (pg_dump, psql). Matches the compose postgres:16-alpine
+# server — Postgres 16 server rejects dumps emitted by a 15 client with
+# "aborting because of server version mismatch". Installed via the official
+# PGDG apt repo because Debian 12 bookworm's `postgresql-client` is v15.
+# Required for `schema_format = :sql` + db:structure:dump to round-trip the
+# partitioned `vendor_signals` table (PRD §4.5).
+# ---------------------------------------------------------------------------
+RUN install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-16 \
  && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------

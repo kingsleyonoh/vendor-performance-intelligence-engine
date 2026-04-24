@@ -24,6 +24,7 @@ class VpiSetupTest < ActiveSupport::TestCase
     # run against an initially-empty tenants table so first-run branch is
     # observable. Use DELETE to also purge has_many :restrict_with_exception
     # children (users/sessions) — fixtures load them too.
+    ScoringRule.delete_all
     User.delete_all
     Session.delete_all
     Tenant.delete_all
@@ -32,6 +33,7 @@ class VpiSetupTest < ActiveSupport::TestCase
   teardown do
     # Reset tenant table so the rest of the suite's fixtures re-hydrate
     # deterministically (parallelize off in this file — see below).
+    ScoringRule.delete_all
     User.delete_all
     Session.delete_all
     Tenant.delete_all
@@ -53,6 +55,11 @@ class VpiSetupTest < ActiveSupport::TestCase
     # Raw key in stdout is a one-time print.
     assert_match(/vpi_/, out, "first-run output must include the raw API key")
     assert_match(/X-API-Key/i, out, "first-run output must instruct on header usage")
+
+    # The default tenant MUST now have an active scoring_rule (PRD §4.7).
+    active_rule = ScoringRule.find_by(tenant_id: tenant.id, is_active: true)
+    assert active_rule, "default tenant must have an active scoring_rule after setup"
+    assert_equal "Default v1", active_rule.name
 
     # Stored hash must be SHA-256 of the raw key — extract the key token
     # (alphanumerics, `_`, `-` — the urlsafe_base64 alphabet plus our
