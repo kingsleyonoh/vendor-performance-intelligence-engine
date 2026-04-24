@@ -4,6 +4,7 @@ require "test_helper"
 require "net/http"
 require "uri"
 require "json"
+require_relative "e2e_test_helper"
 
 # Shell-level E2E for the signal → score lifecycle against a booted Puma.
 #
@@ -17,8 +18,7 @@ require "json"
 # Cross-tenant isolation: second tenant's key MUST NOT see acme's resources
 # (404 on every read).
 class SignalFlowE2ETest < ActiveSupport::TestCase
-  self.test_order = :sorted
-  parallelize(workers: 1)
+  include E2ETestHelper
 
   BASE_URL = ENV.fetch("E2E_BASE_URL", "http://127.0.0.1:3001")
 
@@ -49,7 +49,14 @@ class SignalFlowE2ETest < ActiveSupport::TestCase
       registration: { tax_id: "GB-S-#{slug_suffix}", company_number: "S#{slug_suffix}" },
       contact: { email: "s#{slug_suffix}@e2e.example" }
     }
-    res = post_json("/api/tenants/register", body)
+    # Retry on 429 — Rack::Attack caps /api/tenants/register at 5/min/IP.
+    res = nil
+    4.times do
+      res = post_json("/api/tenants/register", body)
+      break if res.code != "429"
+
+      sleep 15
+    end
     assert_equal "201", res.code, "register failed: #{res.code} #{res.body}"
     parsed = JSON.parse(res.body)
     tenant_id = parsed.dig("tenant", "id")

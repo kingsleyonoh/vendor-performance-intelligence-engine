@@ -60,6 +60,23 @@ class VendorSignal < ApplicationRecord
     raise AppendOnlyViolation, "vendor_signals is append-only; #delete is not permitted"
   end
 
+  # Thread-local merge-mode flag. Flipped briefly by
+  # `Ingestion::VendorMerger` around its bulk UPDATE; no other caller may
+  # touch it. In merge mode, the model guard allows `vendor_id` and
+  # `merged_at` to change in addition to `status`. The DB trigger enforces
+  # the same narrow permission via a session GUC.
+  def self.merge_mode?
+    Thread.current[:vendor_signals_merge_mode] == true
+  end
+
+  def self.with_merge_mode
+    prev = Thread.current[:vendor_signals_merge_mode]
+    Thread.current[:vendor_signals_merge_mode] = true
+    yield
+  ensure
+    Thread.current[:vendor_signals_merge_mode] = prev
+  end
+
   def update(attrs = {})
     guard_status_only!(attrs)
     super
@@ -106,14 +123,21 @@ class VendorSignal < ApplicationRecord
   end
 
   # Allow #update only if the ONLY change is a legal status transition.
-  # Any other field change is rejected as an AppendOnlyViolation.
+  # Any other field change is rejected as an AppendOnlyViolation. In
+  # merge mode (flipped by Ingestion::VendorMerger) `vendor_id` and
+  # `merged_at` are additionally permitted.
   def guard_status_only!(attrs)
     attr_keys = attrs.keys.map(&:to_s)
-    non_status = attr_keys - %w[status]
+    allowed = if self.class.merge_mode?
+                %w[status vendor_id merged_at]
+              else
+                %w[status]
+              end
+    non_status = attr_keys - allowed
 
     if non_status.any?
       raise AppendOnlyViolation,
-            "vendor_signals is append-only; only `status` may be updated (attempted: #{non_status.join(', ')})"
+            "vendor_signals is append-only; only `#{allowed.join(', ')}` may be updated (attempted: #{non_status.join(', ')})"
     end
 
     return unless attr_keys.include?("status")

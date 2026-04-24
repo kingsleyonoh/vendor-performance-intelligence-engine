@@ -1,0 +1,8 @@
+# Sidekiq-cron schedule — PRD §7. Loaded by config/initializers/sidekiq.rb.
+# All cron times are UTC.
+
+partition_manager:
+  cron: "0 1 * * *"          # Daily 01:00 UTC — PRD §7
+  class: PartitionManagerJob
+  queue: default
+  description: "Create next-month partition and drop expired ones on vendor_signals."

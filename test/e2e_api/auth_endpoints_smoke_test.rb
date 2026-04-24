@@ -3,6 +3,7 @@
 require "test_helper"
 require "net/http"
 require "uri"
+require_relative "e2e_test_helper"
 
 # Shell-level E2E smoke against the Rails 8 built-in authentication routes
 # scaffolded in Batch 005. `bin/rake test:e2e` boots Puma on port 3001 then
@@ -14,6 +15,8 @@ require "uri"
 # is covered by the generated `test/controllers/sessions_controller_test.rb`
 # via in-process IntegrationTest.
 class AuthEndpointsSmokeE2ETest < ActiveSupport::TestCase
+  include E2ETestHelper
+
   BASE_URL = ENV.fetch("E2E_BASE_URL", "http://127.0.0.1:3001")
 
   test "GET /session/new returns HTML 200 against running Puma" do

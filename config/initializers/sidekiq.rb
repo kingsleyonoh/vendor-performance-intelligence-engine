@@ -16,6 +16,18 @@ redis_config = {
 
 Sidekiq.configure_server do |config|
   config.redis = redis_config
+
+  # Load cron schedule on Sidekiq server boot. The sidekiq-cron gem
+  # registers each entry in Redis; restarting workers re-applies the file.
+  # Loaded only in the server process (not the client) because clients don't
+  # own the scheduler loop.
+  config.on(:startup) do
+    schedule_path = Rails.root.join("config", "schedule.yml")
+    if schedule_path.exist? && defined?(Sidekiq::Cron::Job)
+      schedule = YAML.load_file(schedule_path) || {}
+      ::Sidekiq::Cron::Job.load_from_hash!(schedule) if schedule.any?
+    end
+  end
 end
 
 Sidekiq.configure_client do |config|

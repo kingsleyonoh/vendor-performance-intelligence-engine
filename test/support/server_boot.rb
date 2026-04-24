@@ -18,12 +18,58 @@ module ServerBoot
   # Boots Puma, waits for readiness, yields the pid, then cleans up.
   #   ServerBoot.boot(port: 3001) { |pid| run_tests }
   def boot(port: DEFAULT_PORT)
+    purge_orphaned_test_data!
     pid = spawn_server(port)
     wait_ready("http://127.0.0.1:#{port}/up", timeout: READINESS_TIMEOUT_SECONDS)
     seed_signal_definitions_if_empty
     yield pid
   ensure
     shutdown(pid) if pid
+    # Truncate again on the way out so `bin/rails test:system` + normal
+    # unit test runs don't trip on residue committed by Puma during E2E.
+    begin
+      purge_orphaned_test_data!
+    rescue StandardError
+      # best effort
+    end
+  end
+
+  # Prior E2E runs commit rows into the TEST database via a dedicated PG
+  # connection that bypasses Rails' transactional fixtures. On the next
+  # run, Rails' fixture FK validator refuses to reload `tenants` because
+  # `scoring_rules` / `vendor_signals` / etc. still reference old tenant
+  # ids from those earlier runs. Purge that residue before boot so the
+  # next fixture-load is clean.
+  def purge_orphaned_test_data!
+    require_relative "../../config/environment"
+    require "active_record"
+
+    test_config = ActiveRecord::Base.configurations.configs_for(env_name: "test").first
+    prev_config = ActiveRecord::Base.connection_db_config
+    ActiveRecord::Base.establish_connection(test_config)
+
+    # TRUNCATE is used instead of DELETE because the vendor_signals
+    # append-only trigger blocks row-level DELETE — TRUNCATE bypasses
+    # the per-row trigger and also cascades FK references cleanly.
+    tables = %w[
+      vendor_scores
+      vendor_signals
+      vendor_aliases
+      vendors
+      scoring_rules
+      sessions
+      users
+      tenants
+    ]
+    ActiveRecord::Base.connection.execute(
+      "TRUNCATE #{tables.join(', ')} CASCADE"
+    )
+
+    warn "[ServerBoot] purged test DB residue"
+  rescue StandardError => e
+    warn "[ServerBoot] purge skipped: #{e.class}: #{e.message}"
+  ensure
+    ActiveRecord::Base.establish_connection(prev_config) if prev_config
   end
 
   # Seed the system catalog if empty. E2E tests run under RAILS_ENV=test,

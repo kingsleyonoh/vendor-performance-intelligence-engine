@@ -46,6 +46,9 @@ gem "thruster", require: false
 # Background jobs — Sidekiq 7 (PRD §3, §7)
 gem "sidekiq", "~> 7.3"
 
+# Cron scheduling for Sidekiq (PRD §7 — PartitionManagerJob + others)
+gem "sidekiq-cron", "~> 1.12"
+
 # HTTP clients — Faraday 2 singletons for ecosystem adapters (PRD §6, §9)
 gem "faraday", "~> 2.9"
 gem "faraday-retry", "~> 2.2"

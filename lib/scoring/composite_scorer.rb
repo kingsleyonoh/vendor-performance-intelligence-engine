@@ -43,9 +43,13 @@ module Scoring
     # @param tenant [Tenant]
     # @param scoring_rule [ScoringRule, nil] overrides the active rule
     #        (for scoring-rule preview); nil → load active rule from DB
-    # @return [VendorScore, nil] nil iff no signals in window
-    def self.call(vendor_id:, tenant:, scoring_rule: nil)
-      new(vendor_id: vendor_id, tenant: tenant, scoring_rule: scoring_rule).call
+    # @param persist [Boolean] when false, returns a Hash without inserting
+    #        a `vendor_scores` row. Used by the scoring-rule preview endpoint
+    #        to simulate band changes without polluting history.
+    # @return [VendorScore, Hash, nil] nil iff no signals in window; Hash when
+    #         persist: false; VendorScore otherwise.
+    def self.call(vendor_id:, tenant:, scoring_rule: nil, persist: true)
+      new(vendor_id: vendor_id, tenant: tenant, scoring_rule: scoring_rule, persist: persist).call
     end
 
     # Band-crossing detector. Returns a frozen hash or nil.
@@ -67,13 +71,14 @@ module Scoring
       { from: prev, to: curr, direction: curr_idx > prev_idx ? :worsening : :improving }
     end
 
-    def initialize(vendor_id:, tenant:, scoring_rule: nil)
+    def initialize(vendor_id:, tenant:, scoring_rule: nil, persist: true)
       raise ArgumentError, "vendor_id is required" if vendor_id.nil?
       raise ArgumentError, "tenant is required" if tenant.nil?
 
       @vendor_id = vendor_id
       @tenant = tenant
       @scoring_rule = scoring_rule
+      @persist = persist
     end
 
     def call
@@ -93,7 +98,7 @@ module Scoring
       trend = compute_trend(composite_score)
       top = pick_top_contributors(contributions)
 
-      VendorScore.create!(
+      attrs = {
         tenant_id: @tenant.id,
         vendor_id: @vendor_id,
         scoring_rule: rule,
@@ -105,7 +110,11 @@ module Scoring
         window_days: rule.window_days,
         signals_considered_count: signals.length,
         computed_at: Time.now.utc
-      )
+      }
+
+      return attrs.merge(scoring_rules_id: rule.id).except(:scoring_rule) unless @persist
+
+      VendorScore.create!(attrs)
     end
 
     # ------------------------------------------------------------------

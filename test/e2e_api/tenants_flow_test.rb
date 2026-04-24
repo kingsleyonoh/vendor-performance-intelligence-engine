@@ -4,6 +4,7 @@ require "test_helper"
 require "net/http"
 require "uri"
 require "json"
+require_relative "e2e_test_helper"
 
 # Shell-level E2E against a booted Puma for the Phase 1 tenant identity
 # surface: register -> me -> rotate-key -> old key denied / new key works.
@@ -14,8 +15,7 @@ require "json"
 #   GET  /api/tenants/me
 #   POST /api/tenants/me/rotate-key
 class TenantsFlowE2ETest < ActiveSupport::TestCase
-  self.test_order = :sorted
-  parallelize(workers: 1)
+  include E2ETestHelper
 
   BASE_URL = ENV.fetch("E2E_BASE_URL", "http://127.0.0.1:3001")
 
@@ -46,8 +46,14 @@ class TenantsFlowE2ETest < ActiveSupport::TestCase
       contact: { email: "hello@e2e.example" }
     }
 
-    # 1. Register
-    register_res = post_json("/api/tenants/register", body)
+    # 1. Register — retry on 429 (Rack::Attack 5/min/IP).
+    register_res = nil
+    4.times do
+      register_res = post_json("/api/tenants/register", body)
+      break if register_res.code != "429"
+
+      sleep 15
+    end
     assert_equal "201", register_res.code,
       "register expected 201, got #{register_res.code}: #{register_res.body}"
     payload = JSON.parse(register_res.body)

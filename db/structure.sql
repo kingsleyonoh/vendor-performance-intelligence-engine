@@ -30,12 +30,49 @@ COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 CREATE FUNCTION public.vendor_signals_enforce_append_only() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+DECLARE
+  merge_mode TEXT;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     RAISE EXCEPTION 'vendor_signals is append-only; DELETE is not permitted (row id=%)', OLD.id;
   END IF;
 
   IF TG_OP = 'UPDATE' THEN
+    merge_mode := current_setting('vpi.signals_merge_mode', true);
+
+    -- In merge mode: only vendor_id, merged_at, and status may change.
+    -- Every other locked column must still be unchanged.
+    IF merge_mode = 'true' THEN
+      IF NEW.id IS DISTINCT FROM OLD.id
+         OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+         OR NEW.signal_code IS DISTINCT FROM OLD.signal_code
+         OR NEW.source_system IS DISTINCT FROM OLD.source_system
+         OR NEW.source_event_id IS DISTINCT FROM OLD.source_event_id
+         OR NEW.value_numeric IS DISTINCT FROM OLD.value_numeric
+         OR NEW.value_boolean IS DISTINCT FROM OLD.value_boolean
+         OR NEW.context::text IS DISTINCT FROM OLD.context::text
+         OR NEW.window_start IS DISTINCT FROM OLD.window_start
+         OR NEW.window_end IS DISTINCT FROM OLD.window_end
+         OR NEW.recorded_at IS DISTINCT FROM OLD.recorded_at
+         OR NEW.supersedes_id IS DISTINCT FROM OLD.supersedes_id
+         OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'vendor_signals merge: only vendor_id, merged_at, and status may change (row id=%)', OLD.id;
+      END IF;
+
+      -- Status transitions still governed in merge mode.
+      IF NEW.status IS DISTINCT FROM OLD.status THEN
+        IF NOT (
+          (OLD.status = 'raw' AND NEW.status IN ('normalized','rejected'))
+          OR (OLD.status = 'normalized' AND NEW.status IN ('scored','superseded'))
+        ) THEN
+          RAISE EXCEPTION 'vendor_signals: illegal status transition % -> %', OLD.status, NEW.status;
+        END IF;
+      END IF;
+
+      RETURN NEW;
+    END IF;
+
+    -- Non-merge mode: lock vendor_id + merged_at + every other column.
     IF NEW.id IS DISTINCT FROM OLD.id
        OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
        OR NEW.vendor_id IS DISTINCT FROM OLD.vendor_id
@@ -49,11 +86,11 @@ BEGIN
        OR NEW.window_end IS DISTINCT FROM OLD.window_end
        OR NEW.recorded_at IS DISTINCT FROM OLD.recorded_at
        OR NEW.supersedes_id IS DISTINCT FROM OLD.supersedes_id
-       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at
+       OR NEW.merged_at IS DISTINCT FROM OLD.merged_at THEN
       RAISE EXCEPTION 'vendor_signals is append-only; only `status` may be updated (row id=%)', OLD.id;
     END IF;
 
-    -- status transitions: raw->normalized, raw->rejected, normalized->scored, normalized->superseded
     IF NEW.status IS DISTINCT FROM OLD.status THEN
       IF NOT (
         (OLD.status = 'raw' AND NEW.status IN ('normalized','rejected'))
@@ -300,6 +337,7 @@ CREATE TABLE public.vendor_signals (
     rejection_reason text,
     supersedes_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    merged_at timestamp with time zone,
     CONSTRAINT vendor_signals_source_system_chk CHECK ((source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text]))),
     CONSTRAINT vendor_signals_status_chk CHECK ((status = ANY (ARRAY['raw'::text, 'normalized'::text, 'scored'::text, 'rejected'::text, 'superseded'::text]))),
     CONSTRAINT vendor_signals_value_xor_chk CHECK ((((value_numeric IS NOT NULL) AND (value_boolean IS NULL)) OR ((value_boolean IS NOT NULL) AND (value_numeric IS NULL)) OR ((value_numeric IS NULL) AND (value_boolean IS NULL) AND (status = 'rejected'::text))))
@@ -328,6 +366,7 @@ CREATE TABLE public.vendor_signals_2026_04 (
     rejection_reason text,
     supersedes_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    merged_at timestamp with time zone,
     CONSTRAINT vendor_signals_source_system_chk CHECK ((source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text]))),
     CONSTRAINT vendor_signals_status_chk CHECK ((status = ANY (ARRAY['raw'::text, 'normalized'::text, 'scored'::text, 'rejected'::text, 'superseded'::text]))),
     CONSTRAINT vendor_signals_value_xor_chk CHECK ((((value_numeric IS NOT NULL) AND (value_boolean IS NULL)) OR ((value_boolean IS NOT NULL) AND (value_numeric IS NULL)) OR ((value_numeric IS NULL) AND (value_boolean IS NULL) AND (status = 'rejected'::text))))
@@ -355,6 +394,7 @@ CREATE TABLE public.vendor_signals_2026_05 (
     rejection_reason text,
     supersedes_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    merged_at timestamp with time zone,
     CONSTRAINT vendor_signals_source_system_chk CHECK ((source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text]))),
     CONSTRAINT vendor_signals_status_chk CHECK ((status = ANY (ARRAY['raw'::text, 'normalized'::text, 'scored'::text, 'rejected'::text, 'superseded'::text]))),
     CONSTRAINT vendor_signals_value_xor_chk CHECK ((((value_numeric IS NOT NULL) AND (value_boolean IS NULL)) OR ((value_boolean IS NOT NULL) AND (value_numeric IS NULL)) OR ((value_numeric IS NULL) AND (value_boolean IS NULL) AND (status = 'rejected'::text))))
@@ -382,6 +422,7 @@ CREATE TABLE public.vendor_signals_default (
     rejection_reason text,
     supersedes_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    merged_at timestamp with time zone,
     CONSTRAINT vendor_signals_source_system_chk CHECK ((source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text]))),
     CONSTRAINT vendor_signals_status_chk CHECK ((status = ANY (ARRAY['raw'::text, 'normalized'::text, 'scored'::text, 'rejected'::text, 'superseded'::text]))),
     CONSTRAINT vendor_signals_value_xor_chk CHECK ((((value_numeric IS NOT NULL) AND (value_boolean IS NULL)) OR ((value_boolean IS NOT NULL) AND (value_numeric IS NULL)) OR ((value_numeric IS NULL) AND (value_boolean IS NULL) AND (status = 'rejected'::text))))
@@ -1095,6 +1136,7 @@ ALTER TABLE public.vendor_signals
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260424180000'),
 ('20260424170200'),
 ('20260424170100'),
 ('20260424170000'),

@@ -388,6 +388,10 @@ GEM
       logger
       rack (>= 2.2.4)
       redis-client (>= 0.22.2)
+    sidekiq-cron (1.12.0)
+      fugit (~> 1.8)
+      globalid (>= 1.0.1)
+      sidekiq (>= 6)
     solid_cable (3.0.12)
       actioncable (>= 7.2)
       activejob (>= 7.2)
@@ -503,6 +507,7 @@ DEPENDENCIES
   sentry-rails (~> 5.21)
   sentry-ruby (~> 5.21)
   sidekiq (~> 7.3)
+  sidekiq-cron (~> 1.12)
   solid_cable
   solid_cache
   solid_queue

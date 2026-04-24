@@ -1,6 +1,7 @@
 require "test_helper"
 require "net/http"
 require "uri"
+require_relative "e2e_test_helper"
 
 # E2E smoke — hits a RUNNING Puma via real HTTP (not an in-process test client).
 # The `test:e2e` rake task in lib/tasks/test.rake boots Puma via ServerBoot and
@@ -8,10 +9,7 @@ require "uri"
 # real HTTP (catches Rack middleware ordering, CORS, startup, Traefik routing
 # that integration tests miss).
 class HealthE2ETest < ActiveSupport::TestCase
-  # Parallelization would race a single shared server on one port. Keep E2E
-  # sequential; the suite is tiny (this is a smoke harness).
-  self.test_order = :sorted
-  parallelize(workers: 1)
+  include E2ETestHelper
 
   def setup
     @port = ENV.fetch("E2E_PORT", "3001").to_i
