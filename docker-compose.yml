@@ -47,6 +47,11 @@ services:
       - ./:/app
       - bundle_cache:/usr/local/bundle
       - node_modules_cache:/app/node_modules
+      # Playwright Chromium binary (~350MB) lives under the `rails` user's cache
+      # dir; a named volume persists it across container recreates so `test:system`
+      # doesn't re-download on every rebuild. Install via:
+      #   bin/dc bash -c "bundle exec playwright install chromium"
+      - playwright_cache:/home/rails/.cache/ms-playwright
     ports:
       - "3000:3000"
     depends_on:
@@ -124,6 +129,7 @@ volumes:
   redis_data:
   bundle_cache:
   node_modules_cache:
+  playwright_cache:
 
 networks:
   vpi-dev-net:
