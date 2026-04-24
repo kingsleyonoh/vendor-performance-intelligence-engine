@@ -18,8 +18,20 @@ Rails.application.routes.draw do
     # pending-alias queue.
     get "aliases/pending", to: "vendor_aliases#pending", as: :pending_aliases
 
+    # Signal ingestion (PRD §5.3 + §8b). Single + batch shapes accepted.
+    post "signals", to: "signals#create"
+
     resources :vendors do
       resources :aliases, controller: "vendor_aliases"
+
+      # Read surface for scores + signals (PRD §8b).
+      scope module: :vendors do
+        resource :score, only: [], controller: "scores" do
+          get :current
+          get :history
+        end
+        resources :signals, only: [:index]
+      end
     end
   end
 

@@ -20,15 +20,80 @@ module ServerBoot
   def boot(port: DEFAULT_PORT)
     pid = spawn_server(port)
     wait_ready("http://127.0.0.1:#{port}/up", timeout: READINESS_TIMEOUT_SECONDS)
+    seed_signal_definitions_if_empty
     yield pid
   ensure
     shutdown(pid) if pid
   end
 
+  # Seed the system catalog if empty. E2E tests run under RAILS_ENV=test,
+  # which does NOT load `db:seed` by default. The Puma subprocess reads
+  # `signal_definitions` during ingestion, so any signal-touching E2E test
+  # requires this catalog. Fixtures only populate tenants + users; this
+  # helper closes the gap without turning off transactional fixtures
+  # (which would leak data across tests).
+  def seed_signal_definitions_if_empty
+    require_relative "../../config/environment"
+    require "active_record"
+
+    # The rake task may have loaded the default (development) environment.
+    # E2E needs seeds in the TEST DB. Re-establish the connection against
+    # the test database configuration and perform the seed write there.
+    prev_config = ActiveRecord::Base.connection_db_config
+    test_config = ActiveRecord::Base.configurations.configs_for(env_name: "test").first
+    ActiveRecord::Base.establish_connection(test_config)
+
+    warn "[ServerBoot] seeding signal_definitions (adapter=#{ActiveRecord::Base.connection_db_config.database})"
+    if SignalDefinition.count.zero?
+      require "yaml"
+      YAML.load_file(Rails.root.join("db/seeds/signal_definitions.yml")).each do |row|
+        SignalDefinition.find_or_create_by!(code: row["code"]) do |sd|
+          sd.assign_attributes(row)
+        end
+      end
+      warn "[ServerBoot] seeded #{SignalDefinition.count} signal_definitions rows"
+    else
+      warn "[ServerBoot] signal_definitions already has #{SignalDefinition.count} rows"
+    end
+
+    # For every tenant (including ones registered by prior E2E tests),
+    # ensure a default active scoring_rule exists so ScoreRecomputeJob
+    # does not raise on missing rule. Phase 1 has a pending [DATA] item
+    # to create this rule automatically at tenant registration; until
+    # that lands, the E2E boot seeds it defensively here.
+    Tenant.find_each do |tenant|
+      next if ScoringRule.where(tenant_id: tenant.id, is_active: true).exists?
+
+      ScoringRule.create!(
+        tenant_id: tenant.id,
+        name: "Default v1",
+        is_active: true,
+        category_weights: {
+          "financial" => 0.35, "operational" => 0.10, "contractual" => 0.30,
+          "integration" => 0.10, "transactional" => 0.15
+        },
+        band_thresholds: { "low_max" => 30, "medium_max" => 60, "high_max" => 85 },
+        window_days: 90,
+        time_decay_half_life_days: 45
+      )
+    end
+  rescue StandardError => e
+    warn "[ServerBoot] signal_definitions seed skipped: #{e.class}: #{e.message}"
+  ensure
+    ActiveRecord::Base.establish_connection(prev_config) if prev_config
+  end
+
   private
 
   def spawn_server(port)
-    env = { "RAILS_ENV" => "test", "PORT" => port.to_s }
+    env = {
+      "RAILS_ENV" => "test",
+      "PORT" => port.to_s,
+      # Run background jobs inline inside request handlers so E2E tests
+      # that assert on job side-effects (ScoreRecomputeJob -> vendor_scores)
+      # observe those writes synchronously, without needing a Sidekiq worker.
+      "E2E_INLINE_JOBS" => "true"
+    }
     Process.spawn(
       env,
       "bin/rails", "server", "-p", port.to_s, "-b", "127.0.0.1",

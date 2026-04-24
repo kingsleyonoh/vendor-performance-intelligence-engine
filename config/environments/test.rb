@@ -36,6 +36,16 @@ Rails.application.configure do
   # ActionMailer::Base.deliveries array.
   config.action_mailer.delivery_method = :test
 
+  # E2E override: when the test:e2e rake task boots Puma in RAILS_ENV=test,
+  # there is no Sidekiq worker running. Setting E2E_INLINE_JOBS=true flips
+  # ActiveJob to the :inline adapter for this process only, so
+  # `ScoreRecomputeJob.perform_later` runs synchronously inside the
+  # enqueuing request. Integration tests still use the default (:test)
+  # adapter because they override it per-test.
+  if ENV["E2E_INLINE_JOBS"].to_s == "true"
+    config.active_job.queue_adapter = :inline
+  end
+
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "example.com" }
 
