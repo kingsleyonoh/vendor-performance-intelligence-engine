@@ -41,6 +41,12 @@ module Api
           after_state: { prefix: key.api_key_prefix }
         )
 
+        ::Analytics::Event.track(
+          event: "api_key_rotated",
+          tenant_id: Current.tenant.id,
+          properties: { previous_prefix: old_prefix, new_prefix: key.api_key_prefix }
+        )
+
         render json: { api_key: key.raw_key }, status: :ok
       end
     end

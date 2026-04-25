@@ -48,6 +48,13 @@ class VendorsController < ApplicationController
       .where(tenant_id: tenant_id, vendor_id: @vendor.id)
       .order(is_confirmed: :asc, confidence: :desc, created_at: :desc)
       .to_a
+
+    Analytics::Event.track(
+      event: "vendor_viewed",
+      tenant_id: tenant_id,
+      user_id: Current.user&.id,
+      properties: { vendor_id: @vendor.id }
+    )
   end
 
   # POST /vendors/:id/terminate — soft-delete via status transition.

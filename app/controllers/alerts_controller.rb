@@ -64,6 +64,13 @@ class AlertsController < ApplicationController
 
     record_audit("alerts#acknowledge", before: { status: "delivered" }, after: { status: @alert.status })
 
+    Analytics::Event.track(
+      event: "alert_acknowledged",
+      tenant_id: @alert.tenant_id,
+      user_id: Current.user&.id,
+      properties: { alert_id: @alert.id, vendor_id: @alert.vendor_id, new_band: @alert.new_band }
+    )
+
     respond_to do |format|
       format.turbo_stream { render turbo_stream: turbo_stream.replace(dom_id_for(@alert), partial: "alerts/alert", locals: { alert: @alert }) }
       format.html { redirect_to alerts_path, notice: "Alert acknowledged." }

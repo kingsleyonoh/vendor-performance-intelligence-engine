@@ -87,6 +87,16 @@ gem "lograge", "~> 0.14"
 gem "sentry-ruby", "~> 5.21"
 gem "sentry-rails", "~> 5.21"
 
+# Prometheus metrics — `/metrics` endpoint scraped by self-hosted Prometheus
+# (PRD §10b). Pure-Ruby exposition format; Basic Auth gated by
+# METRICS_BASIC_AUTH_USER/PASS. Disabled when PROMETHEUS_ENABLED=false.
+gem "prometheus-client", "~> 4.2"
+
+# Product analytics — PostHog (self-hosted). Five instrumented events per
+# PRD §10b: vendor_viewed, alert_acknowledged, scoring_rule_activated,
+# report_generated, api_key_rotated. No-op when POSTHOG_API_KEY unset.
+gem "posthog-ruby", "~> 3.0"
+
 # View components — ViewComponent for PDF + UI rendering (PRD §3, §9)
 gem "view_component", "~> 3.18"
 

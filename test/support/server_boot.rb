@@ -142,7 +142,14 @@ module ServerBoot
       # that assert on job side-effects (ScoreRecomputeJob -> vendor_scores)
       # observe those writes synchronously, without needing a Sidekiq worker.
       "E2E_INLINE_JOBS" => "true",
-      "HUB_INGRESS_SECRET" => ENV["HUB_INGRESS_SECRET"]
+      "HUB_INGRESS_SECRET" => ENV["HUB_INGRESS_SECRET"],
+      # Observability env (PRD §10b) — Prometheus enabled in E2E so the
+      # /metrics route exists; Basic Auth credentials match what
+      # test/e2e_api/metrics_test.rb expects. Forced "true" so the
+      # spawned Puma exposes the endpoint regardless of host env defaults.
+      "PROMETHEUS_ENABLED" => "true",
+      "METRICS_BASIC_AUTH_USER" => "metrics",
+      "METRICS_BASIC_AUTH_PASS" => "changeme"
     }
     Process.spawn(
       env,

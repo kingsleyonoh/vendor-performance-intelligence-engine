@@ -24,6 +24,15 @@ else
   ActiveSupport::Cache::RedisCacheStore.new(url: redis_url)
 end
 
+# Allowlist Prometheus scrapes — PRD §10b. Self-hosted Prometheus polls
+# /metrics every 15s by default; rate-limiting that path would defeat the
+# purpose of having metrics. The path is Basic-Auth gated (see
+# `app/controllers/metrics_controller.rb`) so this allowlist isn't a
+# security relaxation.
+Rack::Attack.safelist("metrics-scrape") do |req|
+  req.path == "/metrics"
+end
+
 # Baseline: 600 req/min per IP. Covers the vast majority of legitimate usage
 # (a human operator + one CI backfill) with ~10x headroom. Phase 3 narrows
 # per endpoint (e.g. POST /api/signals → 1_200/min for batched ingestion).

@@ -42,6 +42,7 @@ module Reports
       finalize_ready!(report)
       record_audit(report, action: "ready")
       emit_hub_event(report)
+      track_analytics(report)
 
       report
     rescue StandardError => e
@@ -143,6 +144,21 @@ module Reports
         requested_by_user_id: report.requested_by_user_id,
         created_at: Time.now.utc.iso8601
       }
+    end
+
+    def track_analytics(report)
+      ::Analytics::Event.track(
+        event: "report_generated",
+        tenant_id: report.tenant_id,
+        user_id: report.requested_by_user_id,
+        properties: {
+          report_id: report.id,
+          report_type: report.report_type,
+          output_format: report.output_format
+        }
+      )
+    rescue StandardError => e
+      Rails.logger.error("ReportGeneratorJob analytics failed: #{e.class}: #{e.message}")
     end
 
     def record_audit(report, action:, **extra)

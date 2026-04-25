@@ -123,6 +123,12 @@ module Api
         Rails.logger.error("[scoring_rules] activation hook failed: #{e.class}: #{e.message}")
       end
 
+      ::Analytics::Event.track(
+        event: "scoring_rule_activated",
+        tenant_id: Current.tenant.id,
+        properties: { scoring_rule_id: @rule.id, rule_name: @rule.name }
+      )
+
       render json: { scoring_rule: ScoringRuleSerializer.new(@rule).serializable_hash },
              status: :ok
     end

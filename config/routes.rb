@@ -161,6 +161,12 @@ Rails.application.routes.draw do
     end
   end
 
+  # Prometheus scrape endpoint — PRD §10b. Public-allowlisted in
+  # Auth::ApiKeyAuthenticator (no X-API-Key required); gated by HTTP Basic
+  # Auth via METRICS_BASIC_AUTH_USER / METRICS_BASIC_AUTH_PASS. Disabled
+  # (404) when PROMETHEUS_ENABLED=false.
+  get "metrics", to: "metrics#index"
+
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
