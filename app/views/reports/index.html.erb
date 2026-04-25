@@ -1,0 +1,100 @@
+<% content_for :title, "Reports — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold" style="color: #1A202C;">Reports</h1>
+    <p class="text-sm text-gray-500 mt-1">Generate, download, and track vendor reports.</p>
+  </div>
+  <button type="button"
+          class="px-4 py-2 rounded-md text-sm font-medium text-white"
+          style="background-color: var(--brand-accent);"
+          data-testid="open-generate-modal"
+          onclick="document.querySelector('[data-testid=generate-modal]').classList.toggle('hidden')">
+    Generate
+  </button>
+</div>
+
+<div class="hidden mb-6 p-4 border rounded-md bg-white" data-testid="generate-modal">
+  <h2 class="text-lg font-medium mb-3">Generate report</h2>
+  <%= form_with url: reports_path, method: :post, local: true, class: "space-y-3" do |f| %>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block">
+        <span class="block text-xs text-gray-600 mb-1">Report type</span>
+        <%= f.select :report_type, VendorReport::REPORT_TYPES.map { |t| [t, t] },
+              { selected: "portfolio_risk" },
+              { id: "report_type", class: "w-full border rounded p-2 text-sm" } %>
+      </label>
+      <label class="block">
+        <span class="block text-xs text-gray-600 mb-1">Output format</span>
+        <%= f.select :output_format, VendorReport::OUTPUT_FORMATS.map { |t| [t, t] },
+              { selected: "csv" },
+              { id: "output_format", class: "w-full border rounded p-2 text-sm" } %>
+      </label>
+    </div>
+    <label class="block">
+      <span class="block text-xs text-gray-600 mb-1">Vendor (required for vendor_scorecard)</span>
+      <%= f.select :vendor_id, @vendors.map { |v| [v.canonical_name, v.id] },
+            { include_blank: "— none —" },
+            { id: "vendor_id", class: "w-full border rounded p-2 text-sm" } %>
+    </label>
+    <label class="block">
+      <span class="block text-xs text-gray-600 mb-1">Trend window (days, trend_analysis only)</span>
+      <%= f.number_field :window_days, value: 90, min: 7, max: 365,
+            class: "w-full border rounded p-2 text-sm" %>
+    </label>
+    <div class="flex gap-2 justify-end">
+      <%= f.submit "Submit", class: "px-3 py-1.5 rounded-md text-sm font-medium text-white",
+            style: "background-color: var(--brand-accent);" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="bg-white border rounded-md overflow-hidden" data-testid="reports-table">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-3 py-2 text-left">Type</th>
+        <th class="px-3 py-2 text-left">Vendor</th>
+        <th class="px-3 py-2 text-left">Format</th>
+        <th class="px-3 py-2 text-left">Status</th>
+        <th class="px-3 py-2 text-left">Generated</th>
+        <th class="px-3 py-2 text-left">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if @reports.empty? %>
+        <tr>
+          <td colspan="6" class="px-3 py-6 text-center text-gray-500">
+            No reports yet. Click <strong>Generate</strong> to create one.
+          </td>
+        </tr>
+      <% end %>
+      <% @reports.each do |report| %>
+        <tr class="border-t" data-testid="report-row-<%= report.id %>">
+          <td class="px-3 py-2"><%= report.report_type %></td>
+          <td class="px-3 py-2"><%= report.vendor&.canonical_name || "—" %></td>
+          <td class="px-3 py-2"><%= report.output_format %></td>
+          <td class="px-3 py-2">
+            <span class="px-2 py-0.5 rounded text-xs font-medium"
+                  style="background-color: <%= status_bg(report.status) %>; color: <%= status_fg(report.status) %>;">
+              <%= report.status %>
+            </span>
+          </td>
+          <td class="px-3 py-2 text-gray-600">
+            <%= report.generated_at ? l(report.generated_at, format: :long) : "—" %>
+          </td>
+          <td class="px-3 py-2">
+            <% if report.status == "ready" %>
+              <%= link_to "Download", download_report_path(report),
+                    class: "text-sm font-medium hover:underline",
+                    style: "color: var(--brand-accent);",
+                    data: { testid: "download-link" } %>
+            <% else %>
+              <span class="text-gray-400 text-sm">—</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

@@ -26,6 +26,14 @@ Rails.application.routes.draw do
     end
   end
 
+  # UI reports surface — PRD §5b, §8, §13.3. HTML/Turbo surface, separate
+  # from the JSON `Api::ReportsController` under /api/reports.
+  resources :reports, only: [:index, :show, :create] do
+    member do
+      get :download
+    end
+  end
+
   # UI settings → ingestion sources — PRD §8, §13.2. Operator-facing config
   # surface for adapter onboarding (CRUD + manual pull). Separate from the
   # JSON `Api::Ingestion::SourcesController` under /api/ingestion/sources.
@@ -93,6 +101,13 @@ Rails.application.routes.draw do
         post :acknowledge
         post :suppress
         post :retry
+      end
+    end
+
+    # Reports — list/show/create + download. PRD §5, §8, §8b, §13.3.
+    resources :reports, only: [:index, :show, :create] do
+      member do
+        get :download
       end
     end
 

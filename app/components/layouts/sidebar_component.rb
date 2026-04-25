@@ -10,7 +10,7 @@ module Layouts
       { label: "Vendors",   path: "/vendors",  key: :vendors },
       { label: "Alerts",    path: "/alerts",   key: :alerts },
       { label: "Aliases",   path: "#",         key: :aliases,  disabled: true },
-      { label: "Reports",   path: "#",         key: :reports,  disabled: true },
+      { label: "Reports",   path: "/reports",  key: :reports },
       {
         label: "Settings",  path: "/settings", key: :settings,
         children: [
