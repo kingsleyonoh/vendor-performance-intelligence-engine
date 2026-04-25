@@ -1,0 +1,30 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: http://hub.example.test/api/events
+    body:
+      encoding: UTF-8
+      string: '{"event_type":"vendor.risk_band_changed","alert_id":"alrt-123","tenant":{"slug":"acme"}}'
+    headers:
+      Content-Type:
+      - application/json
+      X-Api-Key:
+      - "[FILTERED_API_KEY]"
+      User-Agent:
+      - vpi/0.1 (faraday)
+      Accept:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"event_id":"hub-evt-cassette-001","accepted":true}'
+    http_version: '1.1'
+  recorded_at: Thu, 23 Apr 2026 12:00:00 GMT
+recorded_with: VCR 6.3

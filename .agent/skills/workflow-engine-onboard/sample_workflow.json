@@ -1,0 +1,71 @@
+{
+  "workflow_id": "vpi-risk-escalation-default",
+  "name": "VPI Risk Escalation",
+  "description": "Multi-step DAG triggered on every HIGH/CRITICAL vendor-risk band crossing emitted by the Vendor Performance Intelligence Engine.",
+  "trigger": {
+    "type": "api",
+    "method": "POST",
+    "path": "/api/workflows/vpi-risk-escalation-default/execute"
+  },
+  "input_schema": {
+    "type": "object",
+    "required": ["alert_id", "tenant", "vendor", "band_change"],
+    "properties": {
+      "alert_id": { "type": "string" },
+      "tenant": { "type": "object" },
+      "vendor": { "type": "object" },
+      "score": { "type": "object" },
+      "band_change": {
+        "type": "object",
+        "properties": {
+          "previous": { "type": "string" },
+          "new": { "type": "string" },
+          "direction": { "type": "string" }
+        }
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "notify_procurement_channel",
+      "type": "http",
+      "method": "POST",
+      "url": "https://hooks.example.com/vendor-risk-escalations",
+      "body_template": {
+        "text": "[{{ band_change.new | upcase }}] {{ vendor.canonical_name }} ({{ tenant.display_name }}) — score {{ score.new }} (was {{ score.previous }}, {{ band_change.previous }})",
+        "alert_id": "{{ alert_id }}"
+      },
+      "next": "create_owner_ticket"
+    },
+    {
+      "id": "create_owner_ticket",
+      "type": "http",
+      "method": "POST",
+      "url": "https://issues.example.com/api/issues",
+      "body_template": {
+        "project": "PROC",
+        "title": "[{{ band_change.new | upcase }}] Vendor risk escalation: {{ vendor.canonical_name }}",
+        "body": "Tenant: {{ tenant.display_name }}\nVendor: {{ vendor.canonical_name }} ({{ vendor.country_code }})\nScore: {{ score.new }} ({{ band_change.previous }} → {{ band_change.new }})\nAlert id: {{ alert_id }}",
+        "priority": "{% if band_change.new == 'critical' %}highest{% else %}high{% endif %}",
+        "assignee_group": "vendor-risk-owners"
+      },
+      "next": "schedule_review"
+    },
+    {
+      "id": "schedule_review",
+      "type": "http",
+      "method": "POST",
+      "url": "https://calendar.example.com/api/events",
+      "body_template": {
+        "title": "Vendor risk review — {{ vendor.canonical_name }} ({{ tenant.display_name }})",
+        "due_in_days": "{% if band_change.new == 'critical' %}1{% else %}5{% endif %}",
+        "attendees": ["procurement-lead@{{ tenant.contact.email | split: '@' | last }}"]
+      },
+      "next": null
+    }
+  ],
+  "on_failure": {
+    "policy": "log_and_continue",
+    "notify_channel": "vendor-risk-failures"
+  }
+}

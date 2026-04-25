@@ -1,0 +1,28 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: http://contract-engine.example.test/api/obligations?vendor_ref=v-acme-1
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - "[FILTERED_API_KEY]"
+      User-Agent:
+      - vpi/0.1 (faraday)
+      Accept:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"obligations":[{"id":"ob-1","vendor_ref":"v-acme-1","status":"on_track"},{"id":"ob-2","vendor_ref":"v-acme-1","status":"breached"}]}'
+    http_version: '1.1'
+  recorded_at: Thu, 23 Apr 2026 12:00:00 GMT
+recorded_with: VCR 6.3

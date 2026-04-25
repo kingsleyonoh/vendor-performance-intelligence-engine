@@ -1,0 +1,28 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: http://invoice-recon.example.test/api/late-invoices?page=1
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - "[FILTERED_API_KEY]"
+      User-Agent:
+      - vpi/0.1 (faraday)
+      Accept:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"invoices":[{"id":"inv-1","vendor_ref":"v-acme-1","days_late":12},{"id":"inv-2","vendor_ref":"v-acme-2","days_late":8}],"page":1,"total":2}'
+    http_version: '1.1'
+  recorded_at: Thu, 23 Apr 2026 12:00:00 GMT
+recorded_with: VCR 6.3

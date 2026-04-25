@@ -1,0 +1,25 @@
+Subject: [{{ score.new_band | upcase }}] {{ vendor.canonical_name }} risk has moved to MEDIUM — {{ tenant.display_name }}
+
+Hello {{ tenant.display_name }} team,
+
+{{ vendor.canonical_name }} ({{ vendor.country_code }}, {{ vendor.category }}) has crossed from {{ score.previous_band }} into {{ score.new_band | upcase }} risk.
+
+Composite score: {{ score.new }} / 100  (previous: {{ score.previous }} — {{ score.previous_band }})
+Trend: {{ score.trend }}
+Window: {{ score.window_days }} days
+
+Top contributors:
+{% for c in top_contributors -%}
+- {{ c.signal_code }} ({{ c.category }}): {{ c.contribution_pct }}%
+{% endfor %}
+
+Annual spend at risk: {{ vendor.annual_spend.formatted }}
+
+This is an early-warning alert. Reviewing now keeps the vendor out of HIGH band.
+
+View details: {{ deep_links.vendor_detail }}
+Acknowledge: {{ deep_links.acknowledge }}
+
+— {{ tenant.full_legal_name }}
+{{ tenant.address.line1 }}, {{ tenant.address.country_code }}
+{{ tenant.contact.email }}

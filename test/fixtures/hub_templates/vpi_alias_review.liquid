@@ -1,0 +1,14 @@
+Subject: Vendor alias review queue is backing up — {{ tenant.display_name }}
+
+Hello {{ tenant.display_name }} team,
+
+The vendor-alias review queue for {{ tenant.full_legal_name }} has more than 20 pending aliases. Manual confirmation is required to keep ingestion flowing cleanly.
+
+Most recent vendor touched by ingestion: {{ vendor.canonical_name }}
+Composite score: {{ score.new }} ({{ score.new_band }})
+
+Open the alias queue: {{ deep_links.vendor_detail }}
+
+— {{ tenant.full_legal_name }}
+{{ tenant.address.line1 }}, {{ tenant.address.country_code }}
+{{ tenant.contact.email }}

@@ -17,11 +17,19 @@ require "json"
 # template-hardcoded-literal bug class fails at RED instead of
 # leaking into production.
 class TemplateBindingTest < ActiveSupport::TestCase
+  # All 9 Hub templates VPI ships with — PRD §7b. Registered with the
+  # Notification Hub at deploy time via the `notification-hub-onboard`
+  # skill (see `.agent/skills/notification-hub-onboard/output.md`).
   TEMPLATES = {
     "vpi-risk-escalation-email"    => "vpi_risk_escalation_email.liquid",
     "vpi-risk-critical-email"      => "vpi_risk_critical_email.liquid",
     "vpi-risk-escalation-telegram" => "vpi_risk_escalation_telegram.liquid",
-    "vpi-risk-critical-telegram"   => "vpi_risk_critical_telegram.liquid"
+    "vpi-risk-critical-telegram"   => "vpi_risk_critical_telegram.liquid",
+    "vpi-risk-medium-email"        => "vpi_risk_medium_email.liquid",
+    "vpi-risk-improvement-digest"  => "vpi_risk_improvement_digest.liquid",
+    "vpi-report-ready"             => "vpi_report_ready.liquid",
+    "vpi-ingestion-stale"          => "vpi_ingestion_stale.liquid",
+    "vpi-alias-review"             => "vpi_alias_review.liquid"
   }.freeze
 
   TEMPLATE_DIR = Rails.root.join("test", "fixtures", "hub_templates").freeze

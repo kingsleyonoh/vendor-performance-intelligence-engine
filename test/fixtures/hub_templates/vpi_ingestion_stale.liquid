@@ -1,0 +1,17 @@
+Subject: Ingestion source has gone stale — {{ tenant.display_name }}
+
+Hello {{ tenant.display_name }} team,
+
+A signal-ingestion source for {{ tenant.full_legal_name }} has not pulled successfully in over 24 hours. Vendor scores may be running on stale data.
+
+Affected vendor (most recent score): {{ vendor.canonical_name }}
+Last composite score: {{ score.new }} ({{ score.new_band }})
+Last computed: {{ score.computed_at }}
+
+Action required: review the Ingestion Sources page and re-enable the affected source.
+
+Open: {{ deep_links.vendor_detail }}
+
+— {{ tenant.full_legal_name }}
+Registered: {{ tenant.registration.company_number }} / {{ tenant.registration.tax_id }}
+Support: {{ tenant.contact.email }}

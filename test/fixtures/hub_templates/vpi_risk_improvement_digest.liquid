@@ -1,0 +1,23 @@
+Subject: Daily improvement digest — {{ tenant.display_name }} ({{ vendor.canonical_name }})
+
+Hello {{ tenant.display_name }} team,
+
+Good news: {{ vendor.canonical_name }} ({{ vendor.country_code }}, {{ vendor.category }}) improved over the last reporting window.
+
+Composite score: {{ score.new }} / 100 ({{ score.new_band | upcase }})
+Previous: {{ score.previous }} ({{ score.previous_band }})
+Direction: {{ score.direction }}
+Trend: {{ score.trend }}
+
+Top drivers behind the improvement:
+{% for c in top_contributors -%}
+- {{ c.signal_code }} ({{ c.category }}): {{ c.contribution_pct }}%
+{% endfor %}
+
+Annual spend: {{ vendor.annual_spend.formatted }}
+
+View details: {{ deep_links.vendor_detail }}
+
+— {{ tenant.full_legal_name }}
+Registered: {{ tenant.registration.company_number }}
+{{ tenant.contact.email }}
