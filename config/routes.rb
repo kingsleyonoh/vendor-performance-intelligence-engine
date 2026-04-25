@@ -16,6 +16,16 @@ Rails.application.routes.draw do
     end
   end
 
+  # UI alert inbox — PRD §5b, §8, §13.2. HTML/Turbo surface, separate from
+  # the JSON `Api::AlertsController` under /api/alerts.
+  resources :alerts, only: [:index, :show] do
+    member do
+      post :acknowledge
+      post :suppress
+      post :retry
+    end
+  end
+
   # ----------------------------------------------------------------
   # API surface — PRD §8b
   # ----------------------------------------------------------------

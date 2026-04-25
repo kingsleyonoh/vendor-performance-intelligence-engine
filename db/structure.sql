@@ -123,6 +123,53 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: ingestion_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingestion_runs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    ingestion_source_id uuid NOT NULL,
+    mode text NOT NULL,
+    status text DEFAULT 'running'::text NOT NULL,
+    signals_attempted integer DEFAULT 0 NOT NULL,
+    signals_stored integer DEFAULT 0 NOT NULL,
+    signals_rejected integer DEFAULT 0 NOT NULL,
+    signals_deduped integer DEFAULT 0 NOT NULL,
+    error_summary text,
+    retry_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    finished_at timestamp with time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT ingestion_runs_mode_chk CHECK ((mode = ANY (ARRAY['full_backfill'::text, 'incremental'::text, 'webhook_event'::text, 'manual'::text]))),
+    CONSTRAINT ingestion_runs_status_chk CHECK ((status = ANY (ARRAY['running'::text, 'succeeded'::text, 'failed'::text, 'partial'::text])))
+);
+
+
+--
+-- Name: ingestion_sources; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingestion_sources (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    source_system text NOT NULL,
+    is_enabled boolean DEFAULT false NOT NULL,
+    connection_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    pull_mode text DEFAULT 'periodic'::text NOT NULL,
+    pull_interval_minutes integer DEFAULT 15,
+    last_successful_pull timestamp with time zone,
+    last_attempted_pull timestamp with time zone,
+    last_failure_reason text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT ingestion_sources_pull_mode_chk CHECK ((pull_mode = ANY (ARRAY['periodic'::text, 'webhook_push'::text, 'manual'::text]))),
+    CONSTRAINT ingestion_sources_source_system_chk CHECK ((source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text])))
+);
+
+
+--
 -- Name: risk_alerts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -530,6 +577,22 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: ingestion_runs ingestion_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_runs
+    ADD CONSTRAINT ingestion_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ingestion_sources ingestion_sources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_sources
+    ADD CONSTRAINT ingestion_sources_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: risk_alerts risk_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -639,6 +702,27 @@ ALTER TABLE ONLY public.vendor_signals_default
 
 ALTER TABLE ONLY public.vendors
     ADD CONSTRAINT vendors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_ingestion_runs_on_ingestion_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ingestion_runs_on_ingestion_source_id ON public.ingestion_runs USING btree (ingestion_source_id);
+
+
+--
+-- Name: index_ingestion_runs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ingestion_runs_on_tenant_id ON public.ingestion_runs USING btree (tenant_id);
+
+
+--
+-- Name: index_ingestion_sources_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ingestion_sources_on_tenant_id ON public.ingestion_sources USING btree (tenant_id);
 
 
 --
@@ -856,6 +940,34 @@ CREATE INDEX index_vendors_on_tenant_id_and_status ON public.vendors USING btree
 --
 
 CREATE UNIQUE INDEX index_vendors_on_tenant_id_and_tax_id_where_present ON public.vendors USING btree (tenant_id, tax_id) WHERE (tax_id IS NOT NULL);
+
+
+--
+-- Name: ingestion_runs_tenant_source_started_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ingestion_runs_tenant_source_started_idx ON public.ingestion_runs USING btree (tenant_id, ingestion_source_id, started_at DESC);
+
+
+--
+-- Name: ingestion_runs_tenant_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ingestion_runs_tenant_status_idx ON public.ingestion_runs USING btree (tenant_id, status);
+
+
+--
+-- Name: ingestion_sources_tenant_enabled_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ingestion_sources_tenant_enabled_idx ON public.ingestion_sources USING btree (tenant_id, is_enabled);
+
+
+--
+-- Name: ingestion_sources_tenant_system_uidx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ingestion_sources_tenant_system_uidx ON public.ingestion_sources USING btree (tenant_id, source_system);
 
 
 --
@@ -1157,6 +1269,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: ingestion_sources fk_rails_4ea4231a83; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_sources
+    ADD CONSTRAINT fk_rails_4ea4231a83 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: vendor_aliases fk_rails_580b83a8a8; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1170,6 +1290,22 @@ ALTER TABLE ONLY public.vendor_aliases
 
 ALTER TABLE ONLY public.risk_alerts
     ADD CONSTRAINT fk_rails_5baec055b3 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: ingestion_runs fk_rails_5f3a4215e5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_runs
+    ADD CONSTRAINT fk_rails_5f3a4215e5 FOREIGN KEY (ingestion_source_id) REFERENCES public.ingestion_sources(id);
+
+
+--
+-- Name: ingestion_runs fk_rails_676b94fa15; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_runs
+    ADD CONSTRAINT fk_rails_676b94fa15 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -1251,6 +1387,8 @@ ALTER TABLE public.vendor_signals
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260424200100'),
+('20260424200000'),
 ('20260424190000'),
 ('20260424180000'),
 ('20260424170200'),

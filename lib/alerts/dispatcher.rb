@@ -48,6 +48,14 @@ module Alerts
 
         ::Alerts::HubDispatchJob.perform_later(alert.id)
 
+        # PRD §6.b — HIGH/CRITICAL band crossings ALSO fire a
+        # Workflow Automation Engine escalation alongside the Hub event.
+        # The escalation job reads the same frozen delivery_payload (PRD §15
+        # #12), so cross-tenant safety is preserved.
+        if ::Alerts::WorkflowEscalationJob::ESCALATION_BANDS.include?(alert.new_band)
+          ::Alerts::WorkflowEscalationJob.perform_later(alert.id)
+        end
+
         alert
       rescue ::ActiveRecord::RecordNotUnique
         # The (tenant, vendor, score) UNIQUE index fired — another worker

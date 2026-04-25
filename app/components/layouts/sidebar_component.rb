@@ -9,6 +9,7 @@ module Layouts
     NAV_ITEMS = [
       { label: "Dashboard", path: "/",         key: :dashboard },
       { label: "Vendors",   path: "/vendors",  key: :vendors },
+      { label: "Alerts",    path: "/alerts",   key: :alerts },
       { label: "Aliases",   path: "#",         key: :aliases,  disabled: true },
       { label: "Reports",   path: "#",         key: :reports,  disabled: true },
       { label: "Settings",  path: "#",         key: :settings, disabled: true }
