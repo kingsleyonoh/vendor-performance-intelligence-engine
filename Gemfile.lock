@@ -210,7 +210,6 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
-    method_source (1.1.0)
     mime-types (3.7.0)
       logger
       mime-types-data (~> 3.2025, >= 3.2025.0507)
@@ -460,10 +459,10 @@ GEM
     uri (1.1.1)
     useragent (0.16.11)
     vcr (6.4.0)
-    view_component (3.24.0)
-      activesupport (>= 5.2.0, < 8.2)
+    view_component (4.8.0)
+      actionview (>= 7.1.0)
+      activesupport (>= 7.1.0)
       concurrent-ruby (~> 1)
-      method_source (~> 1.0)
     web-console (4.3.0)
       actionview (>= 8.0.0)
       bindex (>= 0.4.0)
@@ -541,7 +540,7 @@ DEPENDENCIES
   turbo-rails
   tzinfo-data
   vcr (~> 6.3)
-  view_component (~> 3.18)
+  view_component (~> 4.8)
   web-console
   webmock (~> 3.23)
   wicked_pdf (~> 2.7)
