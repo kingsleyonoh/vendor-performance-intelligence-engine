@@ -123,6 +123,12 @@ group :test do
   # templates as fixtures so CI fails on any unmapped token.
   gem "liquid", "~> 5.5"
 
+  # PDF text extraction — used by report-generator tests to assert no
+  # cross-tenant leakage in generated PDFs (PRD §15 #15). wkhtmltopdf
+  # FlateDecode-compresses content streams, so a raw byte grep cannot
+  # see the rendered text. pdf-reader inflates streams + decodes fonts.
+  gem "pdf-reader", "~> 2.12"
+
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"

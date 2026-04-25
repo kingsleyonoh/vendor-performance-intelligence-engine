@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Vendor Scorecard — <%= h(f("data.vendor.canonical_name")) %></title>
+  <style>
+    body { font-family: "Helvetica", "Arial", sans-serif; font-size: 11pt; color: #1a202c; margin: 0; padding: 0; }
+    .header { border-bottom: 4px solid <%= h(f("tenant.brand_accent_hex")) %>; padding-bottom: 8px; margin-bottom: 16px; }
+    .header .legal-name { font-size: 16pt; font-weight: bold; color: <%= h(f("tenant.brand_primary_hex")) %>; }
+    .header .display-name { font-size: 9pt; color: #4a5568; }
+    .title { font-size: 22pt; font-weight: bold; margin: 12px 0 4px 0; }
+    .subtitle { font-size: 10pt; color: #4a5568; margin-bottom: 18px; }
+    .score-block { background: #f7fafc; border-left: 6px solid <%= h(f("tenant.brand_accent_hex")) %>; padding: 14px; margin-bottom: 14px; }
+    .composite-score { font-size: 36pt; font-weight: bold; color: <%= h(f("tenant.brand_primary_hex")) %>; }
+    .band-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; color: #fff; font-size: 10pt; font-weight: bold; text-transform: uppercase; background: <%= h(f("tenant.brand_accent_hex")) %>; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
+    th { background: #edf2f7; font-weight: bold; }
+    .section-title { font-size: 13pt; font-weight: bold; margin: 18px 0 8px 0; color: <%= h(f("tenant.brand_primary_hex")) %>; }
+    .footer { font-size: 8pt; color: #4a5568; margin-top: 24px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+    .footer .legal { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="legal-name"><%= h(f("tenant.legal_name")) %></div>
+    <div class="display-name"><%= h(f("tenant.display_name")) %> &middot; Vendor Performance Intelligence</div>
+  </div>
+
+  <div class="title">Vendor Scorecard</div>
+  <div class="subtitle">
+    <%= h(f("data.vendor.canonical_name")) %> &middot;
+    Category: <%= h(f("data.vendor.category", default: "—")) %> &middot;
+    Country: <%= h(f("data.vendor.country_code", default: "—")) %>
+  </div>
+
+  <% latest = f("data.latest_score", default: nil) %>
+  <% if latest %>
+    <div class="score-block">
+      <div class="composite-score"><%= format_score(f("data.latest_score.composite_score")) %></div>
+      <span class="band-pill"><%= h(f("data.latest_score.band")) %></span>
+      <span style="margin-left: 10px; font-size: 10pt;">
+        Trend: <%= h(f("data.latest_score.trend")) %> &middot;
+        Window: <%= h(f("data.latest_score.window_days")) %> days &middot;
+        Computed: <%= format_iso_date(f("data.latest_score.computed_at")) %>
+      </span>
+    </div>
+  <% else %>
+    <div class="score-block">
+      <em>No score has been computed for this vendor yet.</em>
+    </div>
+  <% end %>
+
+  <div class="section-title">Top Contributors</div>
+  <% top = f("data.latest_score.top_contributors", default: []) %>
+  <% if top.is_a?(Array) && top.any? %>
+    <table>
+      <thead>
+        <tr><th>Signal</th><th>Category</th><th>Contribution</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        <% top.first(5).each do |row| %>
+          <tr>
+            <td><%= h(row["signal_code"] || row[:signal_code]) %></td>
+            <td><%= h(row["category"] || row[:category] || "—") %></td>
+            <td><%= h(row["contribution"] || row[:contribution] || "—") %></td>
+            <td><%= h(row["value"] || row[:value] || "—") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p><em>No contributor data captured.</em></p>
+  <% end %>
+
+  <div class="section-title">Recent Signals</div>
+  <% timeline = f("data.signal_timeline", default: []) %>
+  <% if timeline.any? %>
+    <table>
+      <thead>
+        <tr><th>Recorded At</th><th>Signal</th><th>Source</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        <% timeline.first(15).each do |s| %>
+          <tr>
+            <td><%= format_iso_date(s["recorded_at"]) %></td>
+            <td><%= h(s["signal_code"]) %></td>
+            <td><%= h(s["source_system"]) %></td>
+            <td><%= h(s["value_numeric"] || s["value_boolean"] || "—") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p><em>No signals captured in window.</em></p>
+  <% end %>
+
+  <div class="section-title">Aliases</div>
+  <% aliases = f("data.aliases", default: []) %>
+  <% if aliases.any? %>
+    <table>
+      <thead>
+        <tr><th>Source System</th><th>Source Ref</th><th>Confidence</th></tr>
+      </thead>
+      <tbody>
+        <% aliases.each do |a| %>
+          <tr>
+            <td><%= h(a["source_system"]) %></td>
+            <td><%= h(a["source_ref"]) %></td>
+            <td><%= h(a["confidence"]) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p><em>No aliases recorded.</em></p>
+  <% end %>
+
+  <div class="footer">
+    <div class="legal">
+      <strong><%= h(f("links.legal_footer.full_legal_name")) %></strong>
+    </div>
+    <%
+      addr = f("links.legal_footer.address", default: {}) || {}
+      reg  = f("links.legal_footer.registration", default: {}) || {}
+      ct   = f("links.legal_footer.contact", default: {}) || {}
+    %>
+    <div>
+      <%= h([addr["line1"], addr["postal_code"], addr["city"], addr["country_code"]].compact.join(", ")) %>
+    </div>
+    <div>
+      Reg: <%= h(reg["company_number"]) %> &middot; Tax: <%= h(reg["tax_id"]) %> &middot; <%= h(reg["jurisdiction"]) %>
+    </div>
+    <div>
+      <%= h(ct["email"]) %> &middot; <%= h(ct["phone"]) %>
+    </div>
+    <div>Locale: <%= h(f("tenant.locale")) %> &middot; Timezone: <%= h(f("tenant.timezone")) %></div>
+  </div>
+</body>
+</html>

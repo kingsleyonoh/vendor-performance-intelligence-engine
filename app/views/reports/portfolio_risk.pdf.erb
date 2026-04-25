@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Portfolio Risk Summary — <%= h(f("tenant.legal_name")) %></title>
+  <style>
+    body { font-family: "Helvetica", "Arial", sans-serif; font-size: 11pt; color: #1a202c; margin: 0; padding: 0; }
+    .header { border-bottom: 4px solid <%= h(f("tenant.brand_accent_hex")) %>; padding-bottom: 8px; margin-bottom: 16px; }
+    .header .legal-name { font-size: 16pt; font-weight: bold; color: <%= h(f("tenant.brand_primary_hex")) %>; }
+    .title { font-size: 22pt; font-weight: bold; margin: 12px 0 4px 0; }
+    .summary { display: block; margin-bottom: 14px; }
+    .summary span { display: inline-block; margin-right: 16px; font-size: 11pt; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
+    th { background: #edf2f7; font-weight: bold; }
+    .footer { font-size: 8pt; color: #4a5568; margin-top: 24px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="legal-name"><%= h(f("tenant.legal_name")) %></div>
+    <div><%= h(f("tenant.display_name")) %> &middot; Portfolio Risk Summary</div>
+  </div>
+
+  <div class="title">Portfolio Risk</div>
+
+  <% bc = f("data.band_counts", default: {}) || {} %>
+  <div class="summary">
+    <span><strong>Total vendors:</strong> <%= h(f("data.vendor_count")) %></span>
+    <span><strong>Low:</strong> <%= h(bc["low"] || 0) %></span>
+    <span><strong>Medium:</strong> <%= h(bc["medium"] || 0) %></span>
+    <span><strong>High:</strong> <%= h(bc["high"] || 0) %></span>
+    <span><strong>Critical:</strong> <%= h(bc["critical"] || 0) %></span>
+  </div>
+
+  <table>
+    <thead><tr><th>Vendor</th><th>Band</th><th>Composite Score</th></tr></thead>
+    <tbody>
+      <% (f("data.vendors", default: []) || []).sort_by { |v| -v["composite_score"].to_f }.each do |v| %>
+        <tr>
+          <td><%= h(v["canonical_name"]) %></td>
+          <td><%= h(v["band"]) %></td>
+          <td><%= format("%.2f", v["composite_score"].to_f) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <strong><%= h(f("links.legal_footer.full_legal_name")) %></strong>
+    <%
+      addr = f("links.legal_footer.address", default: {}) || {}
+      ct   = f("links.legal_footer.contact", default: {}) || {}
+    %>
+    <div><%= h([addr["line1"], addr["city"], addr["country_code"]].compact.join(", ")) %></div>
+    <div><%= h(ct["email"]) %> &middot; <%= h(ct["phone"]) %></div>
+  </div>
+</body>
+</html>
