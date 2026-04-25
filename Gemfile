@@ -84,8 +84,8 @@ gem "redis", "~> 5.3"
 gem "lograge", "~> 0.14"
 
 # Error tracking — Sentry (PRD §10b; DSN wired in Phase 3)
-gem "sentry-ruby", "~> 5.21"
-gem "sentry-rails", "~> 5.21"
+gem "sentry-ruby", "~> 6.5"
+gem "sentry-rails", "~> 6.5"
 
 # Prometheus metrics — `/metrics` endpoint scraped by self-hosted Prometheus
 # (PRD §10b). Pure-Ruby exposition format; Basic Auth gated by
