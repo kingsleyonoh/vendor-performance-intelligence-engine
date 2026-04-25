@@ -18,16 +18,13 @@ module Scoring
   #   2. Query `vendor_signals` in window, status IN (normalized, scored),
   #      limited by SCORER_MAX_SIGNALS_PER_COMPUTE (safety cap).
   #   3. If no signals → return nil (do NOT insert an empty score).
-  #   4. For each signal: resolve `SignalDefinition` → scale value via
-  #      `SignalScalers` → apply time decay via `TimeDecay` → multiply by
-  #      signal weight (override ?? default).
-  #   5. Aggregate per category as a weighted average of contributions.
-  #   6. Apply category weights → composite_score (clamped to [0, 100],
-  #      rounded to 3 decimals for determinism).
-  #   7. Classify band via `BandClassifier`.
-  #   8. Compute trend against previous score (±5 threshold per PRD §5.4).
-  #   9. Pick top 5 contributors by |contribution|.
-  #  10. Insert vendor_scores row (atomic), return it.
+  #   4. For each signal: build a per-signal contribution record (scale →
+  #      decay → weight) — see `#contribution_for`.
+  #   5. Delegate aggregation to `Scoring::Aggregator`:
+  #         category_scores + composite_score + top_contributors.
+  #   6. Classify band via `BandClassifier`.
+  #   7. Compute trend against previous score (±5 threshold per PRD §5.4).
+  #   8. Insert vendor_scores row (atomic), return it.
   #
   # Band-crossing detection is exposed via `detect_band_crossing` — the
   # alert router (Phase 2) wires this into the band-change hook. The
@@ -89,14 +86,16 @@ module Scoring
       contributions = signals.filter_map { |s| contribution_for(s, rule) }
       return nil if contributions.empty?
 
-      category_scores = aggregate_categories(contributions)
-      composite_score = composite_from_categories(category_scores, rule.category_weights)
+      aggregated = Scoring::Aggregator.call(
+        contributions: contributions,
+        category_weights: rule.category_weights
+      )
+      composite_score = aggregated[:composite_score]
       band = Scoring::BandClassifier.classify(
         composite_score: composite_score,
         band_thresholds: rule.band_thresholds
       ).to_s
       trend = compute_trend(composite_score)
-      top = pick_top_contributors(contributions)
 
       attrs = {
         tenant_id: @tenant.id,
@@ -105,8 +104,8 @@ module Scoring
         composite_score: composite_score,
         band: band,
         trend: trend,
-        category_scores: category_scores_with_all_keys(category_scores),
-        top_contributors: top,
+        category_scores: aggregated[:category_scores],
+        top_contributors: aggregated[:top_contributors],
         window_days: rule.window_days,
         signals_considered_count: signals.length,
         computed_at: Time.now.utc
@@ -182,37 +181,6 @@ module Scoring
       }
     end
 
-    # Aggregate contributions to a per-category weighted average in 0..100.
-    # Sum(contribution) / Sum(decay * signal_weight) gives the mean scaled
-    # risk within the category, weighted by each signal's decay × weight.
-    def aggregate_categories(contributions)
-      scores = {}
-      contributions.group_by { |c| c[:category] }.each do |cat, rows|
-        denom = rows.sum { |r| r[:decay_weight] * r[:signal_weight] }
-        next if denom.zero?
-
-        numer = rows.sum { |r| r[:scaled_value] * r[:decay_weight] * r[:signal_weight] }
-        scores[cat] = clamp_0_100(numer / denom)
-      end
-      scores
-    end
-
-    def composite_from_categories(category_scores, category_weights)
-      weights = category_weights.transform_keys(&:to_s)
-      composite = VendorScore::CATEGORIES.sum do |cat|
-        cat_score = category_scores[cat].to_f
-        cat_weight = weights[cat].to_f
-        cat_score * cat_weight
-      end
-      clamp_0_100(composite).round(SCORE_PRECISION)
-    end
-
-    def category_scores_with_all_keys(category_scores)
-      VendorScore::CATEGORIES.each_with_object({}) do |cat, h|
-        h[cat] = (category_scores[cat] || 0.0).to_f.round(SCORE_PRECISION)
-      end
-    end
-
     # Trend: compare against the most-recent prior VendorScore for this
     # (tenant, vendor). No prior → :new. Otherwise ±TREND_DELTA gives
     # stable/improving/degrading per PRD §5.4 step 8.
@@ -227,21 +195,6 @@ module Scoring
       return "stable" if delta.abs < TREND_DELTA
 
       delta.positive? ? "degrading" : "improving"
-    end
-
-    def pick_top_contributors(contributions)
-      contributions
-        .sort_by { |c| -c[:contribution].abs }
-        .first(VendorScore::MAX_CONTRIBUTORS)
-        .map do |c|
-          {
-            "signal_id" => c[:signal_id],
-            "signal_code" => c[:signal_code],
-            "category" => c[:category],
-            "contribution" => c[:contribution].round(SCORE_PRECISION),
-            "raw_value" => c[:raw_value]
-          }
-        end
     end
 
     def signal_definitions_cache
@@ -273,14 +226,6 @@ module Scoring
       else
         definition.default_weight.to_f
       end
-    end
-
-    def clamp_0_100(value)
-      v = value.to_f
-      return 0.0 if v < 0.0
-      return 100.0 if v > 100.0
-
-      v
     end
   end
 end

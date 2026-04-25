@@ -21,6 +21,9 @@ module Ingestion
   #   5. No match — create fresh vendor, alias at confidence 1.00
   #      (trivially confirmed since the vendor was just minted).
   #
+  # Each rung is a private method that returns the result hash on hit, or
+  # `nil` on miss, so `.resolve` reads as a short orchestrator.
+  #
   # See `.agent/knowledge/foundation/vendor-resolution-flow.md`.
   class VendorResolver
     # Return shape every caller reads:
@@ -43,97 +46,104 @@ module Ingestion
         raise ArgumentError, "source_ref is required" if source_ref.to_s.empty?
 
         ActiveRecord::Base.transaction do
-          # Rung 1: idempotency — existing alias for the same triple.
-          existing_alias = VendorAlias.where(
-            tenant_id: tenant.id,
-            source_system: source_system,
-            source_ref: source_ref
-          ).first
-
-          if existing_alias
-            record_provisional_match(tenant, existing_alias) unless existing_alias.is_confirmed
-            return {
-              vendor: existing_alias.vendor,
-              alias: existing_alias,
-              confidence: existing_alias.confidence.to_f,
-              was_created: false
-            }
-          end
+          existing = try_existing_alias(tenant, source_system, source_ref)
+          return existing if existing
 
           normalized = normalize_if_present(name)
+          ctx = {
+            tenant: tenant, source_system: source_system, source_ref: source_ref,
+            name: name, tax_id: tax_id, country_code: country_code, normalized: normalized
+          }
 
-          # Rung 2: tax_id exact match.
-          if tax_id.present?
-            vendor = Vendor.where(tenant_id: tenant.id, tax_id: tax_id).first
-            if vendor
-              return build_result(
-                tenant: tenant,
-                vendor: vendor,
-                source_system: source_system,
-                source_ref: source_ref,
-                alias_text: name,
-                confidence: CONFIDENCE_EXACT_TAXID,
-                is_confirmed: auto_confirm_exact_taxid?,
-                was_created: false
-              )
-            end
-          end
-
-          # Rung 3: exact normalized_name match.
-          if normalized.present?
-            vendor = Vendor.where(tenant_id: tenant.id, normalized_name: normalized).first
-            if vendor
-              return build_result(
-                tenant: tenant,
-                vendor: vendor,
-                source_system: source_system,
-                source_ref: source_ref,
-                alias_text: name,
-                confidence: CONFIDENCE_EXACT_NAME,
-                is_confirmed: false,
-                was_created: false
-              )
-            end
-
-            # Rung 4: Levenshtein fuzzy match.
-            fuzzy_vendor = find_fuzzy_match(tenant, normalized)
-            if fuzzy_vendor
-              return build_result(
-                tenant: tenant,
-                vendor: fuzzy_vendor,
-                source_system: source_system,
-                source_ref: source_ref,
-                alias_text: name,
-                confidence: CONFIDENCE_FUZZY,
-                is_confirmed: false,
-                was_created: false
-              )
-            end
-          end
-
-          # Rung 5: create a new vendor + confirmed alias.
-          new_vendor = Vendor.create!(
-            tenant: tenant,
-            canonical_name: name.presence || source_ref.to_s,
-            tax_id: tax_id.presence,
-            country_code: country_code.presence,
-            status: "active"
-          )
-
-          build_result(
-            tenant: tenant,
-            vendor: new_vendor,
-            source_system: source_system,
-            source_ref: source_ref,
-            alias_text: name,
-            confidence: CONFIDENCE_NEW_VENDOR,
-            is_confirmed: true,
-            was_created: true
-          )
+          try_tax_id_match(ctx) ||
+            try_normalized_name_match(ctx) ||
+            try_fuzzy_match(ctx) ||
+            create_new_vendor(ctx)
         end
       end
 
       private
+
+      # Rung 1: idempotency — existing alias for the same triple.
+      def try_existing_alias(tenant, source_system, source_ref)
+        existing_alias = VendorAlias.where(
+          tenant_id: tenant.id,
+          source_system: source_system,
+          source_ref: source_ref
+        ).first
+        return nil unless existing_alias
+
+        record_provisional_match(tenant, existing_alias) unless existing_alias.is_confirmed
+        {
+          vendor: existing_alias.vendor,
+          alias: existing_alias,
+          confidence: existing_alias.confidence.to_f,
+          was_created: false
+        }
+      end
+
+      # Rung 2: tax_id exact match.
+      def try_tax_id_match(ctx)
+        return nil if ctx[:tax_id].blank?
+
+        vendor = Vendor.where(tenant_id: ctx[:tenant].id, tax_id: ctx[:tax_id]).first
+        return nil unless vendor
+
+        build_result(
+          tenant: ctx[:tenant], vendor: vendor,
+          source_system: ctx[:source_system], source_ref: ctx[:source_ref],
+          alias_text: ctx[:name], confidence: CONFIDENCE_EXACT_TAXID,
+          is_confirmed: auto_confirm_exact_taxid?, was_created: false
+        )
+      end
+
+      # Rung 3: exact normalized_name match.
+      def try_normalized_name_match(ctx)
+        return nil if ctx[:normalized].blank?
+
+        vendor = Vendor.where(tenant_id: ctx[:tenant].id, normalized_name: ctx[:normalized]).first
+        return nil unless vendor
+
+        build_result(
+          tenant: ctx[:tenant], vendor: vendor,
+          source_system: ctx[:source_system], source_ref: ctx[:source_ref],
+          alias_text: ctx[:name], confidence: CONFIDENCE_EXACT_NAME,
+          is_confirmed: false, was_created: false
+        )
+      end
+
+      # Rung 4: Levenshtein fuzzy match.
+      def try_fuzzy_match(ctx)
+        return nil if ctx[:normalized].blank?
+
+        fuzzy_vendor = find_fuzzy_match(ctx[:tenant], ctx[:normalized])
+        return nil unless fuzzy_vendor
+
+        build_result(
+          tenant: ctx[:tenant], vendor: fuzzy_vendor,
+          source_system: ctx[:source_system], source_ref: ctx[:source_ref],
+          alias_text: ctx[:name], confidence: CONFIDENCE_FUZZY,
+          is_confirmed: false, was_created: false
+        )
+      end
+
+      # Rung 5: create a new vendor + confirmed alias.
+      def create_new_vendor(ctx)
+        new_vendor = Vendor.create!(
+          tenant: ctx[:tenant],
+          canonical_name: ctx[:name].presence || ctx[:source_ref].to_s,
+          tax_id: ctx[:tax_id].presence,
+          country_code: ctx[:country_code].presence,
+          status: "active"
+        )
+
+        build_result(
+          tenant: ctx[:tenant], vendor: new_vendor,
+          source_system: ctx[:source_system], source_ref: ctx[:source_ref],
+          alias_text: ctx[:name], confidence: CONFIDENCE_NEW_VENDOR,
+          is_confirmed: true, was_created: true
+        )
+      end
 
       def build_result(tenant:, vendor:, source_system:, source_ref:, alias_text:, confidence:, is_confirmed:, was_created:)
         new_alias = VendorAlias.create!(
