@@ -13,6 +13,27 @@ module Api
         source = tenant_scope.find(params[:id])
         into_id = extract_into_id
 
+        validation_error = validate_merge_params(source, into_id)
+        return validation_error if validation_error
+
+        target = tenant_scope.find(into_id)
+        authorize! source, to: :update?, with: VendorPolicy
+
+        counts = perform_merge(source, target)
+        source.reload
+        target.reload
+
+        record_merge_audit(source, target)
+        render_merge_result(source, target, counts)
+      rescue ::Ingestion::VendorMerger::AlreadyMerged => e
+        render_api_error(::Errors::JsonApiError::CONFLICT, message: e.message)
+      rescue ::Ingestion::VendorMerger::SameVendor => e
+        render_api_error(::Errors::JsonApiError::VALIDATION_ERROR, message: e.message)
+      end
+
+      private
+
+      def validate_merge_params(source, into_id)
         unless into_id.present?
           return render_api_error(
             ::Errors::JsonApiError::VALIDATION_ERROR,
@@ -36,18 +57,18 @@ module Api
           )
         end
 
-        target = tenant_scope.find(into_id)
-        authorize! source, to: :update?, with: VendorPolicy
+        nil
+      end
 
-        counts = ::Ingestion::VendorMerger.call(
+      def perform_merge(source, target)
+        ::Ingestion::VendorMerger.call(
           tenant: Current.tenant,
           source: source,
           target: target
         )
+      end
 
-        source.reload
-        target.reload
-
+      def record_merge_audit(source, target)
         ::Audit::Recorder.record(
           actor: Current.tenant,
           action: "vendors#merge",
@@ -57,19 +78,15 @@ module Api
           after_state: { status: "merged", merge_into: target.id },
           tenant_id: Current.tenant.id
         )
+      end
 
+      def render_merge_result(source, target, counts)
         render json: {
           source: ::VendorSerializer.new(source).serializable_hash,
           target: ::VendorSerializer.new(target).serializable_hash,
           counts: counts
         }, status: :ok
-      rescue ::Ingestion::VendorMerger::AlreadyMerged => e
-        render_api_error(::Errors::JsonApiError::CONFLICT, message: e.message)
-      rescue ::Ingestion::VendorMerger::SameVendor => e
-        render_api_error(::Errors::JsonApiError::VALIDATION_ERROR, message: e.message)
       end
-
-      private
 
       def tenant_scope
         Vendor.where(tenant_id: Current.tenant.id)

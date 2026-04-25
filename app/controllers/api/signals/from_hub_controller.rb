@@ -19,38 +19,48 @@ module Api
     # envelope is rendered inline via `render_error`.
     class FromHubController < ActionController::API
       def create
-        # 1. Verify HMAC signature.
-        unless ::Auth::HubHmacVerifier.verify(request)
-          return render_error(code: "INVALID_SIGNATURE", status: 401,
-                              message: "Hub signature verification failed.")
-        end
+        return unless verify_hmac!
 
-        # 2. Parse body (raw, since middleware bypassed Rails param parser).
         payload = parse_body
         slug = payload[:tenant_slug].to_s
-        if slug.empty?
-          return render_error(code: "VALIDATION_ERROR", status: 400,
-                              message: "tenant_slug is required.",
-                              details: [{ path: "tenant_slug", issue: "missing" }])
-        end
+        return render_missing_slug if slug.empty?
 
-        # 3. Resolve tenant by slug.
         tenant = ::Tenant.find_by(slug: slug)
-        unless tenant
-          return render_error(code: "INVALID_TENANT", status: 404,
-                              message: "Unknown tenant_slug: #{slug}")
-        end
+        return render_unknown_tenant(slug) unless tenant
 
-        # 4. Bind Current.tenant for the duration of this request.
         ::Current.tenant = tenant
 
-        # 5. Strip envelope keys before handing off to SignalIngester —
+        # Strip envelope keys before handing off to SignalIngester —
         # `tenant_slug` lives at the top level of the from-hub envelope
         # but is not part of the canonical signal schema.
         signal_payload = payload.except(:tenant_slug)
-
         result = ::Ingestion::SignalIngester.call(payload: signal_payload, tenant: tenant)
+        render_ingester_result(result)
+      ensure
+        ::Current.tenant = nil if ::Current.respond_to?(:tenant=)
+      end
 
+      private
+
+      def verify_hmac!
+        return true if ::Auth::HubHmacVerifier.verify(request)
+        render_error(code: "INVALID_SIGNATURE", status: 401,
+                     message: "Hub signature verification failed.")
+        false
+      end
+
+      def render_missing_slug
+        render_error(code: "VALIDATION_ERROR", status: 400,
+                     message: "tenant_slug is required.",
+                     details: [{ path: "tenant_slug", issue: "missing" }])
+      end
+
+      def render_unknown_tenant(slug)
+        render_error(code: "INVALID_TENANT", status: 404,
+                     message: "Unknown tenant_slug: #{slug}")
+      end
+
+      def render_ingester_result(result)
         case result[:status]
         when :ingested
           render json: { status: "accepted", signal_id: result[:signal]&.id }, status: :accepted
@@ -66,11 +76,7 @@ module Api
           render_error(code: "INTERNAL_ERROR", status: 500,
                        message: "Unexpected ingester result.")
         end
-      ensure
-        ::Current.tenant = nil if ::Current.respond_to?(:tenant=)
       end
-
-      private
 
       def parse_body
         raw = request.raw_post.to_s
