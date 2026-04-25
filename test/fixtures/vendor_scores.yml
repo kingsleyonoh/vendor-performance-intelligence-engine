@@ -152,3 +152,50 @@ globex_theta_current:
   computed_at: <%= 2.days.ago.iso8601 %>
   created_at: <%= 2.days.ago.iso8601 %>
   updated_at: <%= 2.days.ago.iso8601 %>
+
+# ---------- Phase 2 alert fixtures (Batch 015+) ----------
+# Scores at the boundaries of HIGH/CRITICAL bands so the alert
+# router can fire band-crossing events against them. Top contributors
+# carry valid signal_codes so DeliveryPayload templates render
+# without StrictVariableNotFound (PRD §15 #14).
+
+<% critical_contributors = [
+     { "signal_code" => "invoice.late_ratio_30d", "category" => "financial", "contribution" => 28.5, "value" => 0.42, "direction" => "higher_is_worse" },
+     { "signal_code" => "invoice.dispute_rate_90d", "category" => "financial", "contribution" => 18.2, "value" => 0.18, "direction" => "higher_is_worse" },
+     { "signal_code" => "contract.obligation_breach_count_90d", "category" => "contractual", "contribution" => 12.0, "value" => 4, "direction" => "higher_is_worse" },
+     { "signal_code" => "webhook.delivery_failure_rate_30d", "category" => "integration", "contribution" => 8.5, "value" => 0.31, "direction" => "higher_is_worse" },
+     { "signal_code" => "transaction.discrepancy_rate_30d", "category" => "transactional", "contribution" => 6.0, "value" => 0.07, "direction" => "higher_is_worse" }
+   ].to_json %>
+
+# Bound to acme_gamma (already watchlist + critical-banded) so the new
+# fixture row stays consistent with existing dashboard / vendors-list
+# expectations from Phase 1 batches. Same logic for globex_eta (high).
+acme_critical_score:
+  tenant: acme_gmbh_de
+  vendor: acme_gamma
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:acme_default, :uuid) %>
+  composite_score: 88.5
+  band: critical
+  trend: degrading
+  category_scores: <%= category_scores %>
+  top_contributors: <%= critical_contributors %>
+  window_days: 90
+  signals_considered_count: 18
+  computed_at: <%= 1.hour.ago.iso8601 %>
+  created_at: <%= 1.hour.ago.iso8601 %>
+  updated_at: <%= 1.hour.ago.iso8601 %>
+
+globex_high_score:
+  tenant: globex_inc_us
+  vendor: globex_eta
+  scoring_rules_id: <%= ActiveRecord::FixtureSet.identify(:globex_default, :uuid) %>
+  composite_score: 65.0
+  band: high
+  trend: degrading
+  category_scores: <%= category_scores %>
+  top_contributors: <%= critical_contributors %>
+  window_days: 90
+  signals_considered_count: 14
+  computed_at: <%= 1.hour.ago.iso8601 %>
+  created_at: <%= 1.hour.ago.iso8601 %>
+  updated_at: <%= 1.hour.ago.iso8601 %>

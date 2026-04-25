@@ -1,0 +1,25 @@
+Subject: [CRITICAL] {{ vendor.canonical_name }} — immediate review required ({{ tenant.display_name }})
+
+This is a CRITICAL risk alert from {{ tenant.full_legal_name }}.
+
+Vendor:        {{ vendor.canonical_name }}
+Country:       {{ vendor.country_code }}
+Category:      {{ vendor.category }}
+Annual spend:  {{ vendor.annual_spend.formatted }}
+
+Score:    {{ score.new }} / 100 — {{ score.new_band | upcase }}
+Previous: {{ score.previous }} ({{ score.previous_band }})
+Trend:    {{ score.trend }}
+
+Top drivers:
+{% for c in top_contributors -%}
+- {{ c.signal_code }}: {{ c.contribution_pct }}% ({{ c.value }})
+{% endfor %}
+
+Take action: {{ deep_links.vendor_detail }}
+Acknowledge: {{ deep_links.acknowledge }}
+
+— {{ tenant.full_legal_name }}
+Registered: {{ tenant.registration.company_number }} / {{ tenant.registration.tax_id }}
+{{ tenant.address.line1 }}, {{ tenant.address.city }}, {{ tenant.address.country_code }}
+Support: {{ tenant.contact.email }}

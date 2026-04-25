@@ -123,6 +123,40 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: risk_alerts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.risk_alerts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    vendor_id uuid NOT NULL,
+    previous_band text NOT NULL,
+    new_band text NOT NULL,
+    previous_score numeric(6,3) NOT NULL,
+    new_score numeric(6,3) NOT NULL,
+    direction text NOT NULL,
+    triggered_by_score uuid NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    delivery_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    hub_event_id text,
+    workflow_execution_id text,
+    dispatch_attempts integer DEFAULT 0 NOT NULL,
+    last_attempt_at timestamp with time zone,
+    last_error text,
+    acknowledged_at timestamp with time zone,
+    acknowledged_by text,
+    resolved_at timestamp with time zone,
+    suppressed_until timestamp with time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT risk_alerts_direction_chk CHECK ((direction = ANY (ARRAY['escalation'::text, 'improvement'::text]))),
+    CONSTRAINT risk_alerts_new_band_chk CHECK ((new_band = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text]))),
+    CONSTRAINT risk_alerts_previous_band_chk CHECK ((previous_band = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text]))),
+    CONSTRAINT risk_alerts_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'dispatching'::text, 'delivered'::text, 'acknowledged'::text, 'resolved'::text, 'suppressed'::text, 'failed'::text])))
+);
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -496,6 +530,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: risk_alerts risk_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.risk_alerts
+    ADD CONSTRAINT risk_alerts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -597,6 +639,20 @@ ALTER TABLE ONLY public.vendor_signals_default
 
 ALTER TABLE ONLY public.vendors
     ADD CONSTRAINT vendors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_risk_alerts_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_risk_alerts_on_tenant_id ON public.risk_alerts USING btree (tenant_id);
+
+
+--
+-- Name: index_risk_alerts_on_vendor_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_risk_alerts_on_vendor_id ON public.risk_alerts USING btree (vendor_id);
 
 
 --
@@ -800,6 +856,41 @@ CREATE INDEX index_vendors_on_tenant_id_and_status ON public.vendors USING btree
 --
 
 CREATE UNIQUE INDEX index_vendors_on_tenant_id_and_tax_id_where_present ON public.vendors USING btree (tenant_id, tax_id) WHERE (tax_id IS NOT NULL);
+
+
+--
+-- Name: risk_alerts_idempotency_uidx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX risk_alerts_idempotency_uidx ON public.risk_alerts USING btree (tenant_id, vendor_id, triggered_by_score);
+
+
+--
+-- Name: risk_alerts_tenant_created_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX risk_alerts_tenant_created_idx ON public.risk_alerts USING btree (tenant_id, created_at DESC);
+
+
+--
+-- Name: risk_alerts_tenant_new_band_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX risk_alerts_tenant_new_band_idx ON public.risk_alerts USING btree (tenant_id, new_band, created_at DESC);
+
+
+--
+-- Name: risk_alerts_tenant_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX risk_alerts_tenant_status_idx ON public.risk_alerts USING btree (tenant_id, status, created_at DESC);
+
+
+--
+-- Name: risk_alerts_tenant_vendor_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX risk_alerts_tenant_vendor_idx ON public.risk_alerts USING btree (tenant_id, vendor_id, created_at DESC);
 
 
 --
@@ -1074,6 +1165,14 @@ ALTER TABLE ONLY public.vendor_aliases
 
 
 --
+-- Name: risk_alerts fk_rails_5baec055b3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.risk_alerts
+    ADD CONSTRAINT fk_rails_5baec055b3 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: vendor_scores fk_rails_70c7d50989; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1106,11 +1205,27 @@ ALTER TABLE ONLY public.vendor_scores
 
 
 --
+-- Name: risk_alerts fk_rails_86e2437ad1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.risk_alerts
+    ADD CONSTRAINT fk_rails_86e2437ad1 FOREIGN KEY (vendor_id) REFERENCES public.vendors(id);
+
+
+--
 -- Name: vendor_aliases fk_rails_a380566a8d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_aliases
     ADD CONSTRAINT fk_rails_a380566a8d FOREIGN KEY (vendor_id) REFERENCES public.vendors(id) ON DELETE CASCADE;
+
+
+--
+-- Name: risk_alerts risk_alerts_triggered_by_score_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.risk_alerts
+    ADD CONSTRAINT risk_alerts_triggered_by_score_fk FOREIGN KEY (triggered_by_score) REFERENCES public.vendor_scores(id) ON DELETE RESTRICT;
 
 
 --
@@ -1136,6 +1251,7 @@ ALTER TABLE public.vendor_signals
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260424190000'),
 ('20260424180000'),
 ('20260424170200'),
 ('20260424170100'),

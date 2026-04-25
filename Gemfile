@@ -116,6 +116,13 @@ group :development do
 end
 
 group :test do
+  # Liquid template engine — used by template-binding fixture tests to
+  # render Hub templates against representative DeliveryPayloads under
+  # strict-undefined mode (PRD §13.2 + §15 #14). Hub-side templating
+  # uses Liquid; the project ships local copies of the registered
+  # templates as fixtures so CI fails on any unmapped token.
+  gem "liquid", "~> 5.5"
+
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
