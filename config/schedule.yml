@@ -18,3 +18,9 @@ webhook_engine_signal_pull:
   class: "Ingestion::WebhookEngineSignalPullJob"
   queue: default
   description: "Pull integration-reliability stats from Webhook Engine into vendor_signals."
+
+invoice_recon_backfill:
+  cron: "*/15 * * * *"       # Every 15 minutes — PRD §7
+  class: "Ingestion::InvoiceReconBackfillJob"
+  queue: default
+  description: "Pull financial vendor stats (late/dispute/overbilling) from Invoice Reconciliation Engine."

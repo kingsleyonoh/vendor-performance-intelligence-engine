@@ -53,6 +53,11 @@ Rails.application.routes.draw do
     # Signal ingestion (PRD §5.3 + §8b). Single + batch shapes accepted.
     post "signals", to: "signals#create"
 
+    # Inbound from Notification Hub fanout — HMAC-authenticated (PRD §13.2).
+    # Allowlisted in Auth::ApiKeyAuthenticator. Uses underscore form for
+    # the route helper while accepting hyphen form on the wire.
+    post "signals/from-hub", to: "signals/from_hub#create"
+
     # Ingestion management (PRD §5, §8b, §13.2).
     namespace :ingestion do
       resources :sources, only: %i[index show create update destroy] do

@@ -132,13 +132,17 @@ module ServerBoot
   private
 
   def spawn_server(port)
+    # Pin HUB_INGRESS_SECRET so the from-hub E2E flow can sign payloads
+    # with the same secret the booted Puma will verify against.
+    ENV["HUB_INGRESS_SECRET"] ||= "test-hub-ingress-secret-32bytes!"
     env = {
       "RAILS_ENV" => "test",
       "PORT" => port.to_s,
       # Run background jobs inline inside request handlers so E2E tests
       # that assert on job side-effects (ScoreRecomputeJob -> vendor_scores)
       # observe those writes synchronously, without needing a Sidekiq worker.
-      "E2E_INLINE_JOBS" => "true"
+      "E2E_INLINE_JOBS" => "true",
+      "HUB_INGRESS_SECRET" => ENV["HUB_INGRESS_SECRET"]
     }
     Process.spawn(
       env,
