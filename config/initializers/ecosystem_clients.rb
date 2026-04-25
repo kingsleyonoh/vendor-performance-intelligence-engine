@@ -15,6 +15,7 @@ require_relative "../../lib/ecosystem/webhook_engine_client"
 require_relative "../../lib/ecosystem/invoice_recon_client"
 require_relative "../../lib/ecosystem/contract_engine_client"
 require_relative "../../lib/ecosystem/recon_engine_client"
+require_relative "../../lib/ecosystem/rag_platform_client"
 require_relative "../../lib/ecosystem/nats_connection"
 
 Rails.application.config.after_initialize do
@@ -24,6 +25,7 @@ Rails.application.config.after_initialize do
   Ecosystem::InvoiceReconClient.instance  ||= Ecosystem::InvoiceReconClient.new
   Ecosystem::ContractEngineClient.instance ||= Ecosystem::ContractEngineClient.new
   Ecosystem::ReconEngineClient.instance   ||= Ecosystem::ReconEngineClient.new
+  Ecosystem::RagPlatformClient.instance   ||= Ecosystem::RagPlatformClient.new
 
   # NATS JetStream connection (PRD §6 + §13.2). Feature-flagged via
   # NATS_ENABLED — when off, `instance` returns nil and consumer jobs
@@ -46,6 +48,7 @@ at_exit do
   Ecosystem::InvoiceReconClient.instance&.close
   Ecosystem::ContractEngineClient.instance&.close
   Ecosystem::ReconEngineClient.instance&.close
+  Ecosystem::RagPlatformClient.instance&.close
   Ecosystem::NatsConnection.shutdown
 rescue StandardError
   # swallow: shutting down

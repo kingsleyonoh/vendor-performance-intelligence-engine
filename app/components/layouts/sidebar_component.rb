@@ -11,6 +11,7 @@ module Layouts
       { label: "Alerts",    path: "/alerts",   key: :alerts },
       { label: "Aliases",   path: "/aliases/pending", key: :aliases },
       { label: "Reports",   path: "/reports",  key: :reports },
+      { label: "Audit",     path: "/audit",    key: :audit },
       {
         label: "Settings",  path: "/settings", key: :settings,
         children: [

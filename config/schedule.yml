@@ -60,3 +60,9 @@ alias_auto_confirm:
   class: "Ingestion::AliasAutoConfirmJob"
   queue: default
   description: "Auto-confirms exact tax_id alias matches and emits Hub event vpi-alias-review when pending count > 20."
+
+rag_enrichment:
+  cron: "0 3 * * *"          # Daily 03:00 UTC — PRD §7, §13.3 (feature-flagged via RAG_PLATFORM_ENABLED)
+  class: "RagEnrichmentJob"
+  queue: default
+  description: "Pulls vendor background entities + relationships from RAG Platform graph endpoint into vendors.metadata.rag_enrichment."

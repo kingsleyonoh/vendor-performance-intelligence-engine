@@ -11,6 +11,8 @@
     <div class="space-y-4">
       <%= render Vendors::ContributorTableComponent.new(score: @latest_score) %>
       <%= render Vendors::AliasCardComponent.new(aliases: @aliases) %>
+      <% rag_card = RagEnrichmentCardComponent.new(vendor: @vendor) %>
+      <%= render rag_card if rag_card.render? %>
     </div>
   </div>
 </div>

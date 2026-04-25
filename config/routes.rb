@@ -66,6 +66,11 @@ Rails.application.routes.draw do
     end
   end
 
+  # Audit Log UI — PRD §5b, §8, §13.3. Read-only operator surface.
+  # Distinct from the JSON `Api::AuditLogController#index` under
+  # `/api/audit-log`. Singleton GET-only resource at `/audit`.
+  get "audit", to: "audit_log#index", as: :audit_log
+
   # ----------------------------------------------------------------
   # API surface — PRD §8b
   # ----------------------------------------------------------------
@@ -131,6 +136,13 @@ Rails.application.routes.draw do
         get :download
       end
     end
+
+    # Audit Log — admin-only read surface. PRD §5, §8, §8b, §13.3.
+    # Rows are insert-only at the model layer (PRD §4.12) — no create/
+    # update/destroy verbs. Path uses hyphen for the wire form, route
+    # helper retains underscore.
+    get  "audit-log",     to: "audit_log#index", as: :audit_log_entries
+    get  "audit-log/:id", to: "audit_log#show",  as: :audit_log_entry
 
     resources :vendors do
       resources :aliases, controller: "vendor_aliases"
