@@ -24,3 +24,9 @@ invoice_recon_backfill:
   class: "Ingestion::InvoiceReconBackfillJob"
   queue: default
   description: "Pull financial vendor stats (late/dispute/overbilling) from Invoice Reconciliation Engine."
+
+contract_lifecycle_backfill:
+  cron: "*/15 * * * *"       # Every 15 minutes — PRD §7
+  class: "Ingestion::ContractLifecycleBackfillJob"
+  queue: default
+  description: "REST catch-up for contractual stats from Contract Lifecycle Engine (complements NATS consumer)."

@@ -13,12 +13,26 @@ require_relative "../../lib/ecosystem/hub_client"
 require_relative "../../lib/ecosystem/workflow_client"
 require_relative "../../lib/ecosystem/webhook_engine_client"
 require_relative "../../lib/ecosystem/invoice_recon_client"
+require_relative "../../lib/ecosystem/contract_engine_client"
+require_relative "../../lib/ecosystem/nats_connection"
 
 Rails.application.config.after_initialize do
   Ecosystem::HubClient.instance           ||= Ecosystem::HubClient.new
   Ecosystem::WorkflowClient.instance      ||= Ecosystem::WorkflowClient.new
   Ecosystem::WebhookEngineClient.instance ||= Ecosystem::WebhookEngineClient.new
   Ecosystem::InvoiceReconClient.instance  ||= Ecosystem::InvoiceReconClient.new
+  Ecosystem::ContractEngineClient.instance ||= Ecosystem::ContractEngineClient.new
+
+  # NATS JetStream connection (PRD §6 + §13.2). Feature-flagged via
+  # NATS_ENABLED — when off, `instance` returns nil and consumer jobs
+  # exit immediately without subscribing. When on, connection failure
+  # at boot is logged but does NOT crash the app — the consumer job
+  # itself handles re-subscribe / reconnect logic.
+  begin
+    Ecosystem::NatsConnection.boot! if Ecosystem::NatsConnection.enabled?
+  rescue StandardError => e
+    Rails.logger.error("[ecosystem.nats] boot failed: #{e.class}: #{e.message}")
+  end
 end
 
 # SIGTERM handler — close singletons cleanly when Puma / Sidekiq shut
@@ -28,6 +42,8 @@ at_exit do
   Ecosystem::WorkflowClient.instance&.close
   Ecosystem::WebhookEngineClient.instance&.close
   Ecosystem::InvoiceReconClient.instance&.close
+  Ecosystem::ContractEngineClient.instance&.close
+  Ecosystem::NatsConnection.shutdown
 rescue StandardError
   # swallow: shutting down
 end

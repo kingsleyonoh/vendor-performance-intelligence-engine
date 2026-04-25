@@ -19,8 +19,9 @@ module Api
         # wires webhook_engine; later batches add invoice_recon, contract_engine,
         # recon_engine, rag_platform.
         ADAPTER_JOBS = {
-          "webhook_engine" => "Ingestion::WebhookEngineSignalPullJob",
-          "invoice_recon"  => "Ingestion::InvoiceReconBackfillJob"
+          "webhook_engine"  => "Ingestion::WebhookEngineSignalPullJob",
+          "invoice_recon"   => "Ingestion::InvoiceReconBackfillJob",
+          "contract_engine" => "Ingestion::ContractLifecycleBackfillJob"
         }.freeze
 
         def create
