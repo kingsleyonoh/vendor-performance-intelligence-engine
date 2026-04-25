@@ -48,3 +48,15 @@ expired_report_reaper:
   class: "Reports::ExpiredReportReaperJob"
   queue: default
   description: "Marks expired vendor_reports rows and deletes their storage_path files."
+
+all_vendors_rescore:
+  cron: "0 2 * * *"          # Daily 02:00 UTC — PRD §7, §13.3
+  class: "Scoring::AllVendorsRescoreJob"
+  queue: default
+  description: "Fans out ScoreRecomputeJob for every active vendor across every tenant."
+
+alias_auto_confirm:
+  cron: "0 4 * * *"          # Daily 04:00 UTC — PRD §7, §7b, §13.3
+  class: "Ingestion::AliasAutoConfirmJob"
+  queue: default
+  description: "Auto-confirms exact tax_id alias matches and emits Hub event vpi-alias-review when pending count > 20."

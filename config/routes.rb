@@ -43,6 +43,27 @@ Rails.application.routes.draw do
         post :pull_now
       end
     end
+
+    # Settings → Scoring Rules — PRD §5b, §8, §13.3. Singular resource:
+    # the operator manages the single active rule per tenant. Submitting
+    # the form CREATEs a new rule and atomically deactivates the previous.
+    resource :scoring, only: %i[show create], controller: "scoring"
+
+    # Settings → API Keys — PRD §5b, §8, §13.3. Singular resource: one
+    # key per tenant. POST = rotate; the rotated key is shown ONCE.
+    resource :api_keys, only: %i[show create], path: "api-keys", controller: "api_keys"
+  end
+
+  # Aliases queue UI — PRD §8, §13.3. Operator-facing pending-confirm queue.
+  # Distinct from the JSON `Api::VendorAliasesController#pending`.
+  resources :vendor_aliases, only: [], path: "aliases" do
+    collection do
+      get :pending
+    end
+    member do
+      post :confirm
+      post :reject
+    end
   end
 
   # ----------------------------------------------------------------

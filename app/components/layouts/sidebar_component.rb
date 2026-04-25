@@ -9,13 +9,17 @@ module Layouts
       { label: "Dashboard", path: "/",         key: :dashboard },
       { label: "Vendors",   path: "/vendors",  key: :vendors },
       { label: "Alerts",    path: "/alerts",   key: :alerts },
-      { label: "Aliases",   path: "#",         key: :aliases,  disabled: true },
+      { label: "Aliases",   path: "/aliases/pending", key: :aliases },
       { label: "Reports",   path: "/reports",  key: :reports },
       {
         label: "Settings",  path: "/settings", key: :settings,
         children: [
           { label: "Ingestion Sources", path: "/settings/ingestion-sources",
-            key: :"settings-ingestion-sources" }
+            key: :"settings-ingestion-sources" },
+          { label: "Scoring",           path: "/settings/scoring",
+            key: :"settings-scoring" },
+          { label: "API Keys",          path: "/settings/api-keys",
+            key: :"settings-api-keys" }
         ]
       }
     ].freeze
