@@ -25,6 +25,8 @@ module E2ETestHelper
     vendor_aliases
     vendors
     scoring_rules
+    ingestion_runs
+    ingestion_sources
     sessions
     users
     tenants

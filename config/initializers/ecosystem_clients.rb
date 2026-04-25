@@ -11,10 +11,12 @@
 require_relative "../../lib/ecosystem/circuit_breaker"
 require_relative "../../lib/ecosystem/hub_client"
 require_relative "../../lib/ecosystem/workflow_client"
+require_relative "../../lib/ecosystem/webhook_engine_client"
 
 Rails.application.config.after_initialize do
-  Ecosystem::HubClient.instance      ||= Ecosystem::HubClient.new
-  Ecosystem::WorkflowClient.instance ||= Ecosystem::WorkflowClient.new
+  Ecosystem::HubClient.instance           ||= Ecosystem::HubClient.new
+  Ecosystem::WorkflowClient.instance      ||= Ecosystem::WorkflowClient.new
+  Ecosystem::WebhookEngineClient.instance ||= Ecosystem::WebhookEngineClient.new
 end
 
 # SIGTERM handler — close singletons cleanly when Puma / Sidekiq shut
@@ -22,6 +24,7 @@ end
 at_exit do
   Ecosystem::HubClient.instance&.close
   Ecosystem::WorkflowClient.instance&.close
+  Ecosystem::WebhookEngineClient.instance&.close
 rescue StandardError
   # swallow: shutting down
 end

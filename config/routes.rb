@@ -53,6 +53,16 @@ Rails.application.routes.draw do
     # Signal ingestion (PRD §5.3 + §8b). Single + batch shapes accepted.
     post "signals", to: "signals#create"
 
+    # Ingestion management (PRD §5, §8b, §13.2).
+    namespace :ingestion do
+      resources :sources, only: %i[index show create update destroy] do
+        member do
+          post :pull_now, to: "sources/pull_now#create"
+        end
+      end
+      resources :runs, only: %i[index show]
+    end
+
     # Scoring rules CRUD + activate + preview — PRD §4.6, §5, §8b.
     resources :scoring_rules do
       member do

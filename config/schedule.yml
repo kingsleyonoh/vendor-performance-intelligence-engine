@@ -12,3 +12,9 @@ failed_alert_retry:
   class: "Alerts::FailedAlertRetryJob"
   queue: default
   description: "Re-enqueue HubDispatchJob for risk_alerts.status='failed' rows past cooldown."
+
+webhook_engine_signal_pull:
+  cron: "*/10 * * * *"       # Every 10 minutes — PRD §7
+  class: "Ingestion::WebhookEngineSignalPullJob"
+  queue: default
+  description: "Pull integration-reliability stats from Webhook Engine into vendor_signals."
