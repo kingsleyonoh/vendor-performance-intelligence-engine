@@ -53,21 +53,16 @@ module Api
       end
 
       test "rotate-key writes an audit trail entry" do
-        log_io = StringIO.new
-        logger = Logger.new(log_io)
-        logger.formatter = ->(_severity, _time, _progname, msg) { "#{msg}\n" }
-        previous_logger = Rails.logger
-        Rails.logger = ActiveSupport::TaggedLogging.new(logger)
-
-        begin
+        # Phase 3 (Batch 023): Audit::Recorder writes to audit_log_entries
+        # by default. Earlier this test asserted on the [audit]-tagged log
+        # line; it now asserts on the DB row.
+        assert_difference -> { AuditLogEntry.where(action: "tenant.rotate_key").count }, 1 do
           post "/api/tenants/me/rotate-key", headers: { "X-API-Key" => ACME_RAW_KEY }
           assert_equal 200, response.status
-          assert_match(/\[audit\]/, log_io.string,
-                       "rotate-key must emit an [audit]-tagged log line")
-          assert_match(/tenant.rotate_key/, log_io.string)
-        ensure
-          Rails.logger = previous_logger
         end
+        row = AuditLogEntry.where(action: "tenant.rotate_key").order(occurred_at: :desc).first
+        assert_equal "Tenant", row.actor_type
+        assert_equal tenants(:acme_gmbh_de).id, row.tenant_id
       end
 
       test "rotate-key requires a valid API key" do

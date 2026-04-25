@@ -47,9 +47,16 @@ class ScoreRecomputeJobTest < ActiveJob::TestCase
     yml.each { |row| SignalDefinition.create!(row) }
   end
 
+  # Capture the production hook (set by config/initializers/alert_dispatcher.rb
+  # — wires recompute → Alerts::Dispatcher) at boot, and restore it after every
+  # test. Earlier the teardown reset to a `nil`-no-op which leaked across the
+  # process and made HubRoundtripTest stop firing alerts when these specs were
+  # co-scheduled.
+  PRODUCTION_BAND_CROSSING_HOOK = ScoreRecomputeJob.band_crossing_hook
+
   teardown do
     Current.tenant = nil
-    ScoreRecomputeJob.band_crossing_hook = ->(_score, _prev) { nil }
+    ScoreRecomputeJob.band_crossing_hook = PRODUCTION_BAND_CROSSING_HOOK
   end
 
   def ensure_rule(tenant)

@@ -123,6 +123,27 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: audit_log_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.audit_log_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    actor_type text NOT NULL,
+    actor_id text,
+    action text NOT NULL,
+    entity_type text NOT NULL,
+    entity_id text,
+    before_state jsonb,
+    after_state jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: ingestion_runs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -374,6 +395,34 @@ CREATE TABLE public.vendor_aliases (
 
 
 --
+-- Name: vendor_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.vendor_reports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    vendor_id uuid,
+    report_type text NOT NULL,
+    status text DEFAULT 'queued'::text NOT NULL,
+    output_format text NOT NULL,
+    parameters jsonb DEFAULT '{}'::jsonb NOT NULL,
+    tenant_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    render_context jsonb DEFAULT '{}'::jsonb NOT NULL,
+    storage_path text,
+    inline_payload text,
+    requested_by_user_id bigint,
+    generated_at timestamp with time zone,
+    expires_at timestamp with time zone,
+    error_summary text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT vendor_reports_output_format_chk CHECK ((output_format = ANY (ARRAY['pdf'::text, 'csv'::text, 'json'::text]))),
+    CONSTRAINT vendor_reports_report_type_chk CHECK ((report_type = ANY (ARRAY['vendor_scorecard'::text, 'portfolio_risk'::text, 'retender_candidates'::text, 'trend_analysis'::text]))),
+    CONSTRAINT vendor_reports_status_chk CHECK ((status = ANY (ARRAY['queued'::text, 'generating'::text, 'ready'::text, 'failed'::text, 'expired'::text])))
+);
+
+
+--
 -- Name: vendor_scores; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -578,6 +627,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: audit_log_entries audit_log_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_log_entries
+    ADD CONSTRAINT audit_log_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ingestion_runs ingestion_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -658,6 +715,14 @@ ALTER TABLE ONLY public.vendor_aliases
 
 
 --
+-- Name: vendor_reports vendor_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendor_reports
+    ADD CONSTRAINT vendor_reports_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: vendor_scores vendor_scores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -703,6 +768,34 @@ ALTER TABLE ONLY public.vendor_signals_default
 
 ALTER TABLE ONLY public.vendors
     ADD CONSTRAINT vendors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: audit_log_occurred_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_log_occurred_idx ON public.audit_log_entries USING btree (occurred_at DESC);
+
+
+--
+-- Name: audit_log_tenant_action_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_log_tenant_action_idx ON public.audit_log_entries USING btree (tenant_id, action, occurred_at DESC);
+
+
+--
+-- Name: audit_log_tenant_entity_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_log_tenant_entity_idx ON public.audit_log_entries USING btree (tenant_id, entity_type, entity_id, occurred_at DESC);
+
+
+--
+-- Name: audit_log_tenant_occurred_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_log_tenant_occurred_idx ON public.audit_log_entries USING btree (tenant_id, occurred_at DESC);
 
 
 --
@@ -867,6 +960,27 @@ CREATE INDEX index_vendor_aliases_pending ON public.vendor_aliases USING btree (
 
 
 --
+-- Name: index_vendor_reports_on_requested_by_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_vendor_reports_on_requested_by_user_id ON public.vendor_reports USING btree (requested_by_user_id);
+
+
+--
+-- Name: index_vendor_reports_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_vendor_reports_on_tenant_id ON public.vendor_reports USING btree (tenant_id);
+
+
+--
+-- Name: index_vendor_reports_on_vendor_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_vendor_reports_on_vendor_id ON public.vendor_reports USING btree (vendor_id);
+
+
+--
 -- Name: index_vendor_scores_on_scoring_rules_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1011,6 +1125,34 @@ CREATE INDEX risk_alerts_tenant_vendor_idx ON public.risk_alerts USING btree (te
 --
 
 CREATE UNIQUE INDEX scoring_rules_tenant_active_uidx ON public.scoring_rules USING btree (tenant_id) WHERE (is_active = true);
+
+
+--
+-- Name: vendor_reports_tenant_created_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX vendor_reports_tenant_created_idx ON public.vendor_reports USING btree (tenant_id, created_at DESC);
+
+
+--
+-- Name: vendor_reports_tenant_expires_ready_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX vendor_reports_tenant_expires_ready_idx ON public.vendor_reports USING btree (tenant_id, expires_at) WHERE (status = 'ready'::text);
+
+
+--
+-- Name: vendor_reports_tenant_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX vendor_reports_tenant_status_idx ON public.vendor_reports USING btree (tenant_id, status);
+
+
+--
+-- Name: vendor_reports_tenant_vendor_type_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX vendor_reports_tenant_vendor_type_idx ON public.vendor_reports USING btree (tenant_id, vendor_id, report_type, created_at DESC);
 
 
 --
@@ -1238,6 +1380,22 @@ CREATE TRIGGER vendor_signals_append_only_trg BEFORE DELETE OR UPDATE ON public.
 
 
 --
+-- Name: vendor_reports fk_rails_0fccc03910; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendor_reports
+    ADD CONSTRAINT fk_rails_0fccc03910 FOREIGN KEY (requested_by_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: vendor_reports fk_rails_1006bb2694; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendor_reports
+    ADD CONSTRAINT fk_rails_1006bb2694 FOREIGN KEY (vendor_id) REFERENCES public.vendors(id);
+
+
+--
 -- Name: users fk_rails_135c8f54b2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1358,6 +1516,14 @@ ALTER TABLE ONLY public.vendor_aliases
 
 
 --
+-- Name: vendor_reports fk_rails_b1c1e10ec4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendor_reports
+    ADD CONSTRAINT fk_rails_b1c1e10ec4 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: risk_alerts risk_alerts_triggered_by_score_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1388,6 +1554,8 @@ ALTER TABLE public.vendor_signals
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260426100100'),
+('20260426100000'),
 ('20260425134117'),
 ('20260424200100'),
 ('20260424200000'),

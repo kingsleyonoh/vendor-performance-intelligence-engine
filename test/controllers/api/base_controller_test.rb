@@ -168,41 +168,46 @@ module Api
     end
 
     test "audit hook fires on successful mutating actions (POST) via Audit::Recorder" do
-      # Capture Rails.logger into a StringIO so we can observe the
-      # [audit]-tagged line that Audit::Recorder emits in Batch 005 (pre-
-      # Phase-3 audit_log migration).
+      # Phase 3 (Batch 023): Audit::Recorder INSERTs into audit_log_entries
+      # by default and falls back to a [audit]-tagged log line only when
+      # the table is unavailable / AUDIT_DB_WRITES=false. Exercise both.
+      Current.tenant = tenants(:acme_gmbh_de)
+
+      begin
+        assert_difference -> { AuditLogEntry.count }, 1 do
+          post_scratch "/api/scratch/create"
+          assert_equal 201, response.status
+        end
+        row = AuditLogEntry.order(occurred_at: :desc).first
+        assert_equal "scratch#create", row.action
+      ensure
+        Current.tenant = nil
+      end
+
       log_io = StringIO.new
       logger = Logger.new(log_io)
       logger.formatter = ->(_severity, _time, _progname, msg) { "#{msg}\n" }
       previous_logger = Rails.logger
       Rails.logger = ActiveSupport::TaggedLogging.new(logger)
-      Current.tenant = Struct.new(:id).new("audit-tenant-1")
+      ENV["AUDIT_DB_WRITES"] = "false"
+      Current.tenant = tenants(:acme_gmbh_de)
 
       begin
         post_scratch "/api/scratch/create"
         assert_equal 201, response.status
         assert_match(/\[audit\]/, log_io.string,
-                     "expected an [audit]-tagged line after a successful POST mutating action")
+                     "expected an [audit]-tagged line via fallback path when AUDIT_DB_WRITES=false")
       ensure
+        ENV.delete("AUDIT_DB_WRITES")
         Rails.logger = previous_logger
         Current.tenant = nil
       end
     end
 
     test "audit hook does NOT fire on non-mutating actions (GET)" do
-      log_io = StringIO.new
-      logger = Logger.new(log_io)
-      logger.formatter = ->(_severity, _time, _progname, msg) { "#{msg}\n" }
-      previous_logger = Rails.logger
-      Rails.logger = ActiveSupport::TaggedLogging.new(logger)
-
-      begin
+      assert_no_difference -> { AuditLogEntry.count } do
         get_scratch "/api/scratch/ok"
         assert_equal 200, response.status
-        refute_match(/\[audit\]/, log_io.string,
-                     "GET actions must not trigger audit recording")
-      ensure
-        Rails.logger = previous_logger
       end
     end
 

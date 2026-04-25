@@ -103,7 +103,17 @@ module Api
     # True for the three Rails RESTful mutating actions. Used by the
     # `record_audit_trail` after_action predicate — audit rows are only
     # written for state changes, not reads.
-    MUTATING_ACTION_NAMES = %w[create update destroy].freeze
+    # Auto-audited action names. The three RESTful mutators plus the
+    # non-RESTful state-change actions used across VPI controllers
+    # (alerts ack/suppress/retry, scoring rules activate, alias merge,
+    # tenant key rotation). Non-listed action names that mutate state
+    # MUST call `Audit::Recorder.record` explicitly inside the action
+    # body (see lib/audit/recorder.rb usage examples).
+    MUTATING_ACTION_NAMES = %w[
+      create update destroy
+      acknowledge suppress retry
+      activate merge
+    ].freeze
 
     def mutating_action?
       MUTATING_ACTION_NAMES.include?(action_name)

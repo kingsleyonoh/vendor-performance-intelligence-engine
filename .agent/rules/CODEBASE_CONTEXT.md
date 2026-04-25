@@ -1,6 +1,6 @@
 # Vendor Performance Intelligence Engine — Codebase Context
 
-> Last updated: 2026-04-25 (Phase 1 close-out)
+> Last updated: 2026-04-25 (Phase 2 close-out)
 > Template synced: 2026-04-23
 
 ## Tech Stack
@@ -19,6 +19,7 @@
 | Serializer | Alba |
 | Validation | dry-validation 1.x (non-model inputs) |
 | Test Runner | Minitest + Capybara + Playwright (system tests) |
+| Templates (Hub) | Liquid 5.x (test group only — drives `test/fixtures/hub_templates/*.liquid` template-binding fixture tests) |
 | PDF | WickedPDF (wkhtmltopdf wrapper) |
 | UI | Tailwind CSS + ViewComponent (Hotwire: Turbo + Stimulus) |
 | Hosting | Docker on Hetzner VPS (`vendors.kingsleyonoh.com`) |
@@ -31,26 +32,34 @@
 
 ```
 app/
-  controllers/ (application_controller, dashboard_controller, vendors_controller, sessions_controller, passwords_controller; api/{base,health,signals,vendors,vendor_aliases,scoring_rules}_controller, api/tenants/{registrations,me,rotate_key}, api/vendors/{scores,signals,merge})
-  models/ (application_record, current, user, session, tenant, vendor, vendor_alias, signal_definition, vendor_signal, vendor_score, scoring_rule)
-  components/ (auth/login_form, layouts/{top_nav,sidebar}, dashboard/{kpi_card,band_change_list}, vendors/{header,band_pill,vendor_row,filter_panel,score_history_chart,contributor_table,signal_timeline,alias_card})
+  controllers/ (application_controller, dashboard_controller, vendors_controller, alerts_controller, sessions_controller, passwords_controller;
+                api/{base,health,signals,vendors,vendor_aliases,scoring_rules,alerts}_controller,
+                api/tenants/{registrations,me,rotate_key},
+                api/vendors/{scores,signals,merge},
+                api/signals/from_hub_controller,
+                api/ingestion/{sources,runs}_controller + api/ingestion/sources/pull_now_controller,
+                settings/ingestion_sources_controller)
+  models/ (application_record, current, user, session, tenant, vendor, vendor_alias, signal_definition, vendor_signal, vendor_score, scoring_rule, risk_alert, ingestion_source, ingestion_run)
+  components/ (auth/login_form, layouts/{top_nav,sidebar}, dashboard/{kpi_card,band_change_list}, vendors/{header,band_pill,vendor_row,filter_panel,score_history_chart,contributor_table,signal_timeline,alias_card}, alerts/{band_change_pill,inbox_row}, settings/{ingestion_source_form,ingestion_source_row,run_history_table})
   serializers/ (tenant, vendor, vendor_alias, vendor_signal, vendor_score, scoring_rule)
-  jobs/ (application_job, score_recompute_job, partition_manager_job)
+  jobs/ (application_job, score_recompute_job, partition_manager_job, alerts/{hub_dispatch,workflow_escalation,failed_alert_retry}, ingestion/{webhook_engine_signal_pull,invoice_recon_backfill,contract_lifecycle_backfill,contract_lifecycle_nats_consumer,transaction_recon_backfill}, monitors/stale_ingestion_monitor)
   helpers/, mailers/, channels/, views/
-  (policies/, alerts/, reports/ — arrive Phase 2+)
+  (policies/, reports/ — arrive Phase 3+)
 lib/
-  auth/ (api_key_authenticator.rb — Rack middleware, LIVE)
+  auth/ (api_key_authenticator.rb — Rack middleware, LIVE; hub_hmac_verifier.rb — verifies inbound `/api/signals/from-hub`, LIVE)
   tenants/ (capture_snapshot.rb, api_key_generator.rb, registration_contract.rb)
-  ingestion/ (name_normalizer, vendor_resolver, signal_validator, signal_ingester, vendor_merger)
+  ingestion/ (name_normalizer, vendor_resolver, signal_validator, signal_ingester, vendor_merger; mappers/{webhook_engine,invoice_recon,contract_engine,recon_engine}_mapper — adapter payload → signal envelope, LIVE)
+  ecosystem/ (hub_client, workflow_client, webhook_engine_client, invoice_recon_client, contract_engine_client, recon_engine_client, nats_connection, circuit_breaker — all LIVE; pure outbound clients, no app/ deps)
+  alerts/ (capture_payload — freezes `risk_alerts.delivery_payload` at insert; dispatcher — emits via `Ecosystem::HubClient`)
   scoring/ (composite_scorer, aggregator, signal_scalers, time_decay, band_classifier, rule_previewer, rules_contract)
   cache/ (request_cache, scoring_config_cache, tenant_cache)
   audit/ (recorder.rb — Lograge-tagged JSON; DB insert wires Phase 3)
   errors/ (json_api_error.rb)
   tasks/ (test.rake, vpi.rake)
-  (alerts/, reports/, ecosystem/ — pending Phase 2+)
-config/ (routes.rb, initializers/ — auto_boot, cors, rack_attack, lograge, sidekiq, request_id_instrumentation, signal_ingester_hooks)
-db/ (migrate/ — 12 migrations through Phase 1; seeds/signal_definitions.yml)
-test/ (controllers/, models/, jobs/, lib/, integration/, system/, fixtures/, e2e_api/, support/)
+  (reports/ — pending Phase 3+)
+config/ (routes.rb, schedule.yml — sidekiq-cron schedule for 7 jobs; initializers/ — auto_boot, cors, rack_attack, lograge, sidekiq, request_id_instrumentation, signal_ingester_hooks, ecosystem_clients)
+db/ (migrate/ — 16 migrations through Phase 2; seeds/signal_definitions.yml)
+test/ (controllers/, models/, jobs/, lib/, integration/, system/, fixtures/ + fixtures/hub_templates/{9 *.liquid templates}, e2e_api/, support/, vcr_cassettes/{hub_client,workflow_client,webhook_engine_client,invoice_recon_client,contract_engine_client,recon_engine_client})
 docker/ + Dockerfile + docker-compose.yml + docker-compose.prod.yml
 bin/ (dev, dc, rails, rake, rubocop, brakeman, setup, thrust)
 ```
@@ -75,16 +84,18 @@ Full list (grouped by concern) in **`.agent/rules/CODEBASE_CONTEXT_ENV.md`**. Co
 
 All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{SERVICE}_ENABLED=false` default.
 
-| Direction | Service | Method | Purpose | Auth |
-|-----------|---------|--------|---------|------|
-| this → | Notification Hub | REST `POST /api/events` | Risk-band-change alerts (email + Telegram) | `X-API-Key` |
-| this → | Workflow Automation Engine | REST `POST /api/workflows/:id/execute` | HIGH/CRITICAL escalations | `X-API-Key` |
-| ← this | Webhook Ingestion Engine | REST pull (`/api/sources`, `/api/dead-letters`, `/api/stats`) | Integration-reliability signals | `X-API-Key` |
-| ← this | Invoice Reconciliation Engine | Hub event subscribe (`invoice.*`) + REST pull | Financial signals | `X-API-Key` |
-| ← this | Contract Lifecycle Engine | NATS JetStream subscribe (`contract.obligation.*`) + REST pull | Contractual signals | NATS creds + `X-API-Key` |
-| ← this | Transaction Reconciliation Engine | REST pull `GET /api/v1/discrepancies?source=vendor` | Transactional signals | `X-API-Key` |
-| ← this | Multi-Agent RAG Platform | REST pull `GET /api/graph/entities` | Vendor background enrichment | `X-API-Key` |
-| → this | Hub event ingress (engine-hosted) | Inbound `POST /api/signals/from-hub` | Hub fanout into engine | Shared secret (HMAC) |
+| Direction | Service | Method | Status | Auth |
+|-----------|---------|--------|--------|------|
+| this → | Notification Hub | REST `POST /api/events` via `Ecosystem::HubClient` | **LIVE** (Phase 2) — feature-flagged | `X-API-Key` |
+| this → | Workflow Automation Engine | REST `POST /api/workflows/:id/execute` via `Ecosystem::WorkflowClient` | **LIVE** (Phase 2) — feature-flagged | `X-API-Key` |
+| ← this | Webhook Ingestion Engine | REST pull via `Ecosystem::WebhookEngineClient` + `Ingestion::WebhookEngineSignalPullJob` (every 10 min) | **LIVE** (Phase 2) — feature-flagged | `X-API-Key` |
+| ← this | Invoice Reconciliation Engine | Hub event ingress + REST pull via `Ecosystem::InvoiceReconClient` + `Ingestion::InvoiceReconBackfillJob` (every 15 min) | **LIVE** (Phase 2) — feature-flagged | `X-API-Key` |
+| ← this | Contract Lifecycle Engine | NATS JetStream subscribe via `Ingestion::ContractLifecycleNatsConsumerJob` + REST catch-up via `Ingestion::ContractLifecycleBackfillJob` (every 15 min) | **LIVE** (Phase 2) — feature-flagged | NATS creds + `X-API-Key` |
+| ← this | Transaction Reconciliation Engine | REST pull via `Ecosystem::ReconEngineClient` + `Ingestion::TransactionReconBackfillJob` (every 15 min) | **LIVE** (Phase 2) — feature-flagged | `X-API-Key` |
+| ← this | Multi-Agent RAG Platform | REST pull `GET /api/graph/entities` | Pending Phase 3 | `X-API-Key` |
+| → this | Hub event ingress (engine-hosted) | Inbound `POST /api/signals/from-hub` — verified by `lib/auth/hub_hmac_verifier.rb` | **LIVE** (Phase 2) | Shared secret (HMAC) |
+
+All outbound clients share `lib/ecosystem/circuit_breaker.rb` (Faraday middleware) and lifecycle-managed singletons in `config/initializers/ecosystem_clients.rb`. Inbound HMAC ingress is allowlisted in `Auth::ApiKeyAuthenticator`. VCR cassettes for all six outbound adapters under `test/vcr_cassettes/`.
 
 ## Commands
 
@@ -124,19 +135,22 @@ All integrations are OPTIONAL (standalone-first — PRD §2.2). Each gated by `{
 |-------|--------------|
 | API base / CORS / rate-limit | `app/controllers/api/base_controller.rb` + `config/initializers/{cors,rack_attack}.rb` (rack_attack throttles `/api/tenants/register` to 5/min/IP) |
 | API-key auth | `lib/auth/api_key_authenticator.rb` (LIVE) + `lib/cache/tenant_cache.rb` |
+| Hub HMAC verifier | `lib/auth/hub_hmac_verifier.rb` — verifies inbound `POST /api/signals/from-hub` (allowlisted) |
 | UI auth (Rails 8 built-in) | `app/controllers/concerns/authentication.rb` + `sessions_controller.rb` + `passwords_controller.rb` + `app/models/{user,session,current}.rb` |
 | Tenant snapshot | `lib/tenants/{capture_snapshot,api_key_generator,registration_contract}.rb` (LIVE) |
 | Scoring | `lib/scoring/` — `composite_scorer`, `aggregator`, `signal_scalers`, `time_decay`, `band_classifier`, `rule_previewer`, `rules_contract` (LIVE) |
 | Ingestion | `lib/ingestion/` — `name_normalizer`, `vendor_resolver`, `signal_validator`, `signal_ingester`, `vendor_merger` (LIVE) |
+| Ingestion adapters / mappers | `lib/ecosystem/{webhook_engine,invoice_recon,contract_engine,recon_engine}_client.rb` paired with `lib/ingestion/mappers/{webhook_engine,invoice_recon,contract_engine,recon_engine}_mapper.rb` (adapter response → signal envelope) — driven by `app/jobs/ingestion/*_backfill_job.rb` + `contract_lifecycle_nats_consumer_job.rb` |
+| Ecosystem clients | `lib/ecosystem/` — `hub_client`, `workflow_client`, `webhook_engine_client`, `invoice_recon_client`, `contract_engine_client`, `recon_engine_client`, `nats_connection`, `circuit_breaker` (LIVE; pure outbound, lifecycle-managed in `config/initializers/ecosystem_clients.rb`) |
+| Alerts | `lib/alerts/{capture_payload,dispatcher}.rb` + `app/jobs/alerts/{hub_dispatch,workflow_escalation,failed_alert_retry}_job.rb` + `app/controllers/{alerts_controller,api/alerts_controller}.rb` + `app/components/alerts/` (LIVE) |
+| Ingestion management UI/API | `app/controllers/api/ingestion/{sources,runs}_controller.rb` + `app/controllers/api/ingestion/sources/pull_now_controller.rb` + `app/controllers/settings/ingestion_sources_controller.rb` + `app/components/settings/` |
 | Errors | `lib/errors/json_api_error.rb` (JSON:API-style error envelope) |
 | Cache helpers | `lib/cache/{request_cache,scoring_config_cache,tenant_cache}.rb` |
 | Audit | `lib/audit/recorder.rb` — Lograge-tagged JSON (DB insert wires Phase 3) |
 | Structured logging | `config/initializers/lograge.rb` + `request_id_instrumentation.rb` |
-| Sidekiq config | `config/initializers/sidekiq.rb` + `Procfile.dev` (sidekiq-cron schedules `PartitionManagerJob` daily 01:00 UTC) |
-| UI (dashboard, vendors list, vendor detail, login) | `app/controllers/{dashboard,vendors}_controller.rb` + `app/components/{auth,layouts,dashboard,vendors}/` |
-| Ecosystem clients (pending) | `lib/ecosystem/` (Phase 3) |
+| Sidekiq config | `config/initializers/sidekiq.rb` + `Procfile.dev` + `config/schedule.yml` (sidekiq-cron schedules: `partition_manager` 01:00 UTC, `failed_alert_retry` every 30 min, `webhook_engine_signal_pull` every 10 min, `invoice_recon_backfill` / `contract_lifecycle_backfill` / `transaction_recon_backfill` every 15 min, `stale_ingestion_monitor` hourly) |
+| UI (dashboard, vendors list, vendor detail, alerts inbox, settings, login) | `app/controllers/{dashboard,vendors,alerts}_controller.rb` + `app/controllers/settings/ingestion_sources_controller.rb` + `app/components/{auth,layouts,dashboard,vendors,alerts,settings}/` |
 | Reports (pending) | `lib/reports/` (Phase 3) |
-| Alerts (pending) | `lib/alerts/` + `app/jobs/alerts/` (Phase 3) |
 | Architecture rules | `.agent/rules/architecture_rules.md` |
 
 ## Observability (PRD §10b)
@@ -153,21 +167,21 @@ Health checks: `/api/health`, `/api/health/db`, `/api/health/redis`, `/api/healt
 
 ## Notifications (PRD §7b)
 
-All notifications route via **Notification Hub** (no direct Resend/Twilio/Telegram integration). Templates registered via `notification-hub-onboard` skill:
+All notifications route via **Notification Hub** (no direct Resend/Twilio/Telegram integration). Onboarding via the `notification-hub-onboard` skill — its emitted output (registered tenant + rules + template IDs) is captured at `.agent/skills/notification-hub-onboard/output.md`. Every template below ships as a Liquid fixture in `test/fixtures/hub_templates/` and is exercised by template-binding tests over ≥2 distinct tenant snapshots:
 
-| Template | Trigger |
-|----------|---------|
-| `vpi-risk-escalation-email` | Any → HIGH |
-| `vpi-risk-critical-email` | Any → CRITICAL |
-| `vpi-risk-escalation-telegram` | Any → HIGH |
-| `vpi-risk-critical-telegram` | Any → CRITICAL |
-| `vpi-risk-medium-email` | LOW → MEDIUM |
-| `vpi-risk-improvement-digest` | Daily digest of improvements |
-| `vpi-report-ready` | Report status → `ready` |
-| `vpi-ingestion-stale` | `ingestion_sources.last_successful_pull > 24h` |
-| `vpi-alias-review` | Pending alias queue > 20 |
+| Template | Fixture | Trigger |
+|----------|---------|---------|
+| `vpi-risk-escalation-email` | `vpi_risk_escalation_email.liquid` | Any → HIGH |
+| `vpi-risk-critical-email` | `vpi_risk_critical_email.liquid` | Any → CRITICAL |
+| `vpi-risk-escalation-telegram` | `vpi_risk_escalation_telegram.liquid` | Any → HIGH |
+| `vpi-risk-critical-telegram` | `vpi_risk_critical_telegram.liquid` | Any → CRITICAL |
+| `vpi-risk-medium-email` | `vpi_risk_medium_email.liquid` | LOW → MEDIUM |
+| `vpi-risk-improvement-digest` | `vpi_risk_improvement_digest.liquid` | Daily digest of improvements |
+| `vpi-report-ready` | `vpi_report_ready.liquid` | Report status → `ready` |
+| `vpi-ingestion-stale` | `vpi_ingestion_stale.liquid` | `ingestion_sources.last_successful_pull > 24h` (emitted by `Monitors::StaleIngestionMonitorJob`, hourly, idempotent within 6h) |
+| `vpi-alias-review` | `vpi_alias_review.liquid` | Pending alias queue > 20 |
 
-All templates bind to `DeliveryPayload` shape (§5.5) — frozen at alert creation, never re-queried.
+All templates bind to `DeliveryPayload` shape (§5.5) — frozen in `risk_alerts.delivery_payload` by `lib/alerts/capture_payload.rb` at alert creation, dispatched by `Alerts::HubDispatchJob`, never re-queried.
 
 ## Gotchas & Lessons Learned
 
