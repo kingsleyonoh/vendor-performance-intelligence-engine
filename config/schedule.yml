@@ -6,3 +6,9 @@ partition_manager:
   class: PartitionManagerJob
   queue: default
   description: "Create next-month partition and drop expired ones on vendor_signals."
+
+failed_alert_retry:
+  cron: "*/30 * * * *"       # Every 30 minutes — PRD §7, §15 #6
+  class: "Alerts::FailedAlertRetryJob"
+  queue: default
+  description: "Re-enqueue HubDispatchJob for risk_alerts.status='failed' rows past cooldown."

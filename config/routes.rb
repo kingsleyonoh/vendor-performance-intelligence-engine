@@ -51,6 +51,15 @@ Rails.application.routes.draw do
       end
     end
 
+    # Risk alerts — list/show + lifecycle actions. PRD §5, §8b, §13.2.
+    resources :alerts, only: [:index, :show] do
+      member do
+        post :acknowledge
+        post :suppress
+        post :retry
+      end
+    end
+
     resources :vendors do
       resources :aliases, controller: "vendor_aliases"
 

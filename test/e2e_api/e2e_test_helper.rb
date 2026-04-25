@@ -19,6 +19,7 @@
 # dedicated connection. Call it inside every E2E test class body.
 module E2ETestHelper
   PURGE_TABLES = %w[
+    risk_alerts
     vendor_scores
     vendor_signals
     vendor_aliases
