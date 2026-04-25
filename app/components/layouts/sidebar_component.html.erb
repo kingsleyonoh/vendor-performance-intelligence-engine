@@ -13,10 +13,27 @@
           <span class="ml-2 text-xs opacity-60">(soon)</span>
         </span>
       <% else %>
-        <%= link_to item[:label], item[:path],
-              class: "block px-3 py-2 rounded-md text-sm font-medium",
-              style: "background-color: #{bg}; color: #{color};",
-              data: { testid: "sidebar-#{item[:key]}" } %>
+        <% if item[:children] %>
+          <span class="block px-3 py-2 rounded-md text-sm font-medium"
+                style="background-color: <%= bg %>; color: <%= color %>;"
+                data-testid="sidebar-<%= item[:key] %>"><%= item[:label] %></span>
+          <div class="ml-3 mt-1 space-y-1">
+            <% item[:children].each do |child| %>
+              <% child_active = active?(child) %>
+              <% child_bg = child_active ? "var(--brand-accent)" : "transparent" %>
+              <% child_color = child_active ? "white" : "#CBD5E0" %>
+              <%= link_to child[:label], child[:path],
+                    class: "block px-3 py-1.5 rounded-md text-xs",
+                    style: "background-color: #{child_bg}; color: #{child_color};",
+                    data: { testid: "sidebar-#{child[:key]}" } %>
+            <% end %>
+          </div>
+        <% else %>
+          <%= link_to item[:label], item[:path],
+                class: "block px-3 py-2 rounded-md text-sm font-medium",
+                style: "background-color: #{bg}; color: #{color};",
+                data: { testid: "sidebar-#{item[:key]}" } %>
+        <% end %>
       <% end %>
     <% end %>
   </nav>

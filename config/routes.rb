@@ -26,6 +26,17 @@ Rails.application.routes.draw do
     end
   end
 
+  # UI settings → ingestion sources — PRD §8, §13.2. Operator-facing config
+  # surface for adapter onboarding (CRUD + manual pull). Separate from the
+  # JSON `Api::Ingestion::SourcesController` under /api/ingestion/sources.
+  namespace :settings do
+    resources :ingestion_sources, path: "ingestion-sources" do
+      member do
+        post :pull_now
+      end
+    end
+  end
+
   # ----------------------------------------------------------------
   # API surface — PRD §8b
   # ----------------------------------------------------------------

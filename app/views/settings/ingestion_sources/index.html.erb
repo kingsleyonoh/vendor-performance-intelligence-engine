@@ -1,0 +1,39 @@
+<% content_for :title, "Ingestion Sources — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-4">
+  <header class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Ingestion Sources</h1>
+      <p class="text-sm text-gray-500">Configure adapters for <%= UiBrand.display_name_for(Current.tenant) %>.</p>
+    </div>
+    <%= link_to "New source", new_settings_ingestion_source_path,
+          class: "rounded-md px-3 py-2 text-sm font-medium text-white",
+          style: "background-color: var(--brand-accent);",
+          data: { testid: "new-source-btn" } %>
+  </header>
+
+  <% if @sources.empty? %>
+    <p class="p-6 bg-white rounded-lg text-sm text-gray-500 shadow-sm" data-testid="ingestion-sources-empty">
+      No ingestion sources configured yet. Click "New source" to add one.
+    </p>
+  <% else %>
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <table class="w-full" data-testid="ingestion-sources-table">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-3 py-2 text-left">Source</th>
+            <th class="px-3 py-2 text-left">Enabled</th>
+            <th class="px-3 py-2 text-left">Last successful pull</th>
+            <th class="px-3 py-2 text-left">Status</th>
+            <th class="px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @sources.each do |source| %>
+            <%= render Settings::IngestionSourceRowComponent.new(source: source) %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

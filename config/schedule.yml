@@ -30,3 +30,15 @@ contract_lifecycle_backfill:
   class: "Ingestion::ContractLifecycleBackfillJob"
   queue: default
   description: "REST catch-up for contractual stats from Contract Lifecycle Engine (complements NATS consumer)."
+
+transaction_recon_backfill:
+  cron: "*/15 * * * *"       # Every 15 minutes — PRD §7 (feature-flagged via RECON_ENGINE_ENABLED)
+  class: "Ingestion::TransactionReconBackfillJob"
+  queue: default
+  description: "Pull transactional reconciliation stats (discrepancy/unmatched/reject/late settlement) from Transaction Reconciliation Engine."
+
+stale_ingestion_monitor:
+  cron: "0 * * * *"          # Hourly at :00 — PRD §7b, §13.2
+  class: "Monitors::StaleIngestionMonitorJob"
+  queue: default
+  description: "Detects ingestion sources with last_successful_pull > 24h and emits Hub event vpi-ingestion-stale (idempotent within 6h)."

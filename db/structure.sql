@@ -164,6 +164,7 @@ CREATE TABLE public.ingestion_sources (
     last_failure_reason text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    monitor_state jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT ingestion_sources_pull_mode_chk CHECK ((pull_mode = ANY (ARRAY['periodic'::text, 'webhook_push'::text, 'manual'::text]))),
     CONSTRAINT ingestion_sources_source_system_chk CHECK ((source_system = ANY (ARRAY['invoice_recon'::text, 'webhook_engine'::text, 'contract_engine'::text, 'recon_engine'::text, 'rag_platform'::text, 'manual'::text])))
 );
@@ -1387,6 +1388,7 @@ ALTER TABLE public.vendor_signals
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260425134117'),
 ('20260424200100'),
 ('20260424200000'),
 ('20260424190000'),

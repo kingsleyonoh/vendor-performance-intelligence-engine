@@ -1,0 +1,37 @@
+<% if runs.empty? %>
+  <p class="p-4 bg-white rounded-lg text-sm text-gray-500 shadow-sm" data-testid="runs-empty">
+    No runs yet.
+  </p>
+<% else %>
+  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <table class="w-full" data-testid="runs-table">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+        <tr>
+          <th class="px-3 py-2 text-left">Started</th>
+          <th class="px-3 py-2 text-left">Mode</th>
+          <th class="px-3 py-2 text-left">Status</th>
+          <th class="px-3 py-2 text-right">Stored</th>
+          <th class="px-3 py-2 text-right">Rejected</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% runs.each do |run| %>
+          <tr class="border-t" data-testid="run-row">
+            <td class="px-3 py-2 text-sm text-gray-700">
+              <%= run.started_at&.strftime("%Y-%m-%d %H:%M UTC") %>
+            </td>
+            <td class="px-3 py-2 text-sm text-gray-700"><%= run.mode %></td>
+            <td class="px-3 py-2 text-sm">
+              <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                    style="background-color: <%= status_color(run.status) %>; color: <%= status_text_color(run.status) %>;">
+                <%= run.status %>
+              </span>
+            </td>
+            <td class="px-3 py-2 text-sm text-right"><%= run.signals_stored %></td>
+            <td class="px-3 py-2 text-sm text-right"><%= run.signals_rejected %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

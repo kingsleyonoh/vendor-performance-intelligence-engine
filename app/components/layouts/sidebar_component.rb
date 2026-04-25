@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 # Layouts::SidebarComponent — PRD §5b, §8. Left-side navigation with
-# current-page highlight. Links stub out Phase 2/3 surfaces (Aliases,
-# Reports, Settings) so the IA is visible from Phase 1 — clicks route
-# to `#` placeholders until those pages land.
+# current-page highlight. Some entries have sub-items (Settings) that
+# expand under the parent when the parent's path prefix is active.
 module Layouts
   class SidebarComponent < ViewComponent::Base
     NAV_ITEMS = [
@@ -12,7 +11,13 @@ module Layouts
       { label: "Alerts",    path: "/alerts",   key: :alerts },
       { label: "Aliases",   path: "#",         key: :aliases,  disabled: true },
       { label: "Reports",   path: "#",         key: :reports,  disabled: true },
-      { label: "Settings",  path: "#",         key: :settings, disabled: true }
+      {
+        label: "Settings",  path: "/settings", key: :settings,
+        children: [
+          { label: "Ingestion Sources", path: "/settings/ingestion-sources",
+            key: :"settings-ingestion-sources" }
+        ]
+      }
     ].freeze
 
     def initialize(current_path:)

@@ -1,0 +1,65 @@
+<%= form_with model: source, url: form_url, method: form_method, scope: :ingestion_source,
+              local: true, html: { "data-testid": "ingestion-source-form" } do |f| %>
+  <% if source.errors.any? %>
+    <div class="mb-3 p-3 rounded-md text-sm" style="background-color: #FED7D7; color: #742A2A;"
+         data-testid="form-errors">
+      <% source.errors.full_messages.each do |msg| %>
+        <div><%= msg %></div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="space-y-3">
+    <% if mode == :new %>
+      <label class="block text-xs text-gray-600">
+        Source system
+        <%= f.select :source_system, source_system_options.map { |s| [s, s] },
+              { include_blank: false },
+              class: "block mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+      </label>
+    <% else %>
+      <div class="text-xs text-gray-600">
+        Source system: <span class="font-medium"><%= source.source_system %></span>
+      </div>
+    <% end %>
+
+    <label class="block text-xs text-gray-600">
+      Pull mode
+      <%= f.select :pull_mode, pull_mode_options.map { |s| [s, s] },
+            { include_blank: false },
+            class: "block mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+    </label>
+
+    <label class="block text-xs text-gray-600">
+      Pull interval (minutes)
+      <%= f.number_field :pull_interval_minutes, value: source.pull_interval_minutes || 15,
+            class: "block mt-1 w-32 rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+    </label>
+
+    <label class="inline-flex items-center text-xs text-gray-600">
+      <%= f.check_box :is_enabled, checked: source.is_enabled %>
+      <span class="ml-2">Enabled</span>
+    </label>
+
+    <label class="block text-xs text-gray-600">
+      Connection config (JSON)
+      <span class="block text-gray-500">
+        Secrets must use ENV references — e.g. <code>"api_key_ref": "ENV:WEBHOOK_ENGINE_API_KEY"</code>.
+        Raw secrets are rejected.
+      </span>
+      <%= f.text_area :connection_config_json,
+            value: connection_config_json,
+            rows: 8,
+            class: "block mt-1 w-full font-mono text-xs rounded-md border border-gray-300 px-2 py-1" %>
+    </label>
+  </div>
+
+  <div class="mt-4 flex justify-end space-x-2">
+    <%= link_to "Cancel", helpers.settings_ingestion_sources_path,
+          class: "rounded-md px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 bg-white hover:bg-gray-50" %>
+    <%= f.submit submit_label,
+          class: "rounded-md px-3 py-2 text-sm font-medium text-white",
+          style: "background-color: var(--brand-accent);",
+          data: { testid: "submit-btn" } %>
+  </div>
+<% end %>

@@ -21,7 +21,8 @@ module Api
         ADAPTER_JOBS = {
           "webhook_engine"  => "Ingestion::WebhookEngineSignalPullJob",
           "invoice_recon"   => "Ingestion::InvoiceReconBackfillJob",
-          "contract_engine" => "Ingestion::ContractLifecycleBackfillJob"
+          "contract_engine" => "Ingestion::ContractLifecycleBackfillJob",
+          "recon_engine"    => "Ingestion::TransactionReconBackfillJob"
         }.freeze
 
         def create
