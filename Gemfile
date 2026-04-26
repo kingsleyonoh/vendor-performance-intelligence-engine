@@ -98,7 +98,7 @@ gem "prometheus-client", "~> 4.2"
 gem "posthog-ruby", "~> 3.0"
 
 # View components — ViewComponent for PDF + UI rendering (PRD §3, §9)
-gem "view_component", "~> 3.18"
+gem "view_component", "~> 4.8"
 
 # Levenshtein distance for vendor alias fuzzy-match (PRD §5.2 rung 3).
 # Ruby stdlib doesn't ship an edit-distance implementation; this gem gives
