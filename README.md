@@ -312,4 +312,6 @@ docker compose -f docker-compose.prod.yml up -d
 
 Set the environment variables listed in **Setup → Environment** before starting. `${POSTGRES_PASSWORD:?}` and other required secrets fail-closed if absent.
 
-<!-- THEATRE_LINK -->
+---
+
+Full case study, architectural breakdown, and engineering deep-dive at [kingsleyonoh.com/projects/vendor-performance-intelligence-engine](https://www.kingsleyonoh.com/projects/vendor-performance-intelligence-engine)
