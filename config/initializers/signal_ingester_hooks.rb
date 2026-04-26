@@ -12,11 +12,16 @@ Rails.application.config.after_initialize do
     next if signal.nil?
 
     ScoreRecomputeJob.perform_later(signal.vendor_id, signal.tenant_id)
+
+    # Bust the per-tenant Dashboard KPI cache (PRD §10b) so the next
+    # dashboard render reflects the freshly-ingested signal. Failures
+    # here MUST NOT propagate — see the rescue below.
+    ::Cache::DashboardKpiCache.invalidate(tenant_id: signal.tenant_id)
   rescue StandardError => e
     # The hook must never surface back into the ingester (it would roll
     # back the signal insert — which violates append-only). Log and swallow.
     Rails.logger.error(
-      "[signal_ingester_hooks] ScoreRecomputeJob enqueue failed: #{e.class}: #{e.message}"
+      "[signal_ingester_hooks] post-insert hook failed: #{e.class}: #{e.message}"
     )
   end
 end

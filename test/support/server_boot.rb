@@ -149,7 +149,11 @@ module ServerBoot
       # spawned Puma exposes the endpoint regardless of host env defaults.
       "PROMETHEUS_ENABLED" => "true",
       "METRICS_BASIC_AUTH_USER" => "metrics",
-      "METRICS_BASIC_AUTH_PASS" => "changeme"
+      "METRICS_BASIC_AUTH_PASS" => "changeme",
+      # E2E shares 127.0.0.1 across 12+ tests that register tenants in
+      # <60s. Production keeps the strict 5/min/IP cap (PRD §8b). Bump
+      # for E2E so the suite isn't throttled by its own success.
+      "RACK_ATTACK_REGISTER_LIMIT" => "200"
     }
     Process.spawn(
       env,

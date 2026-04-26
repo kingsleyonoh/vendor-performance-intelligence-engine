@@ -106,6 +106,27 @@ module Api
                "details must surface the missing field path — got #{details.inspect}"
       end
 
+      test "registration auto-seeds the default Default v1 scoring_rule for the new tenant — PRD §4.7 + §13.1" do
+        post "/api/tenants/register",
+             params: VALID_BODY.merge(slug: "rules-seed-test").to_json,
+             headers: { "Content-Type" => "application/json" }
+
+        assert_equal 201, response.status
+        tenant = Tenant.find_by(slug: "rules-seed-test")
+        assert tenant, "registration must persist the tenant"
+
+        # Every fresh tenant MUST get an active "Default v1" scoring_rule with
+        # canonical category weights from db/seeds/scoring_rules.yml — without
+        # one, the composite scorer cannot run on its first signal ingest.
+        rule = ScoringRule.find_by(tenant_id: tenant.id, name: "Default v1")
+        assert rule, "expected default scoring_rule to be auto-seeded for the new tenant"
+        assert rule.is_active, "default scoring_rule must be marked active"
+        assert_equal 0.35, rule.category_weights["financial"]
+        assert_equal 0.30, rule.category_weights["contractual"]
+        assert_equal 90,   rule.window_days
+        assert_equal 45,   rule.time_decay_half_life_days
+      end
+
       test "raw api_key is NOT persisted anywhere in the DB" do
         post "/api/tenants/register",
              params: VALID_BODY.merge(slug: "storage-test").to_json,

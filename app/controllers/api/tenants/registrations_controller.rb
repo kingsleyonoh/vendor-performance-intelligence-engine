@@ -48,6 +48,13 @@ module Api
           return render_validation_error_from_model(tenant)
         end
 
+        # Auto-seed the default `Default v1` scoring_rule (PRD §4.6 + §4.7
+        # + §13.1). Every tenant must have an active rule on first signal
+        # ingest — without it, the composite scorer cannot run. Failure
+        # here is logged but does not roll back the tenant: an operator
+        # can re-run `bin/rails db:seed` to back-fill the rule.
+        seed_default_scoring_rule_for(tenant)
+
         ::Audit::Recorder.record(
           actor: "public_registration",
           action: "tenant.create",
@@ -123,6 +130,33 @@ module Api
 
       def self_registration_enabled?
         ENV.fetch("SELF_REGISTRATION_ENABLED", "true").to_s.downcase == "true"
+      end
+
+      # Pulls the canonical `db/seeds/scoring_rules.yml` template into a
+      # `ScoringRule` row for the freshly-registered tenant. PRD §4.6 +
+      # §13.1. Idempotent: re-runs no-op via `find_or_initialize_by`.
+      def seed_default_scoring_rule_for(tenant)
+        path = Rails.root.join("db", "seeds", "scoring_rules.yml")
+        return unless File.exist?(path)
+
+        template = YAML.load_file(path)
+        return unless template.is_a?(Hash)
+
+        rule = ScoringRule.find_or_initialize_by(tenant_id: tenant.id, name: template["name"])
+        rule.assign_attributes(
+          category_weights: template["category_weights"],
+          signal_weight_overrides: template["signal_weight_overrides"] || {},
+          band_thresholds: template["band_thresholds"],
+          window_days: template["window_days"],
+          time_decay_half_life_days: template["time_decay_half_life_days"],
+          is_active: template["is_active"]
+        )
+        rule.save!
+      rescue StandardError => e
+        Rails.logger.error(
+          "[registrations_controller] default scoring_rule seed failed for " \
+          "tenant=#{tenant.id}: #{e.class}: #{e.message}"
+        )
       end
     end
   end
