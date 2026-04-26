@@ -37,7 +37,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: vpi_user
-      POSTGRES_PASSWORD: vpi_dev_pw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vpi_dev_pw}
       POSTGRES_DB: vpi_development
       POSTGRES_TEST_DB: vpi_test
       REDIS_URL: redis://redis:6379/0
@@ -69,7 +69,7 @@ services:
     container_name: vpi-postgres-dev
     environment:
       POSTGRES_USER: vpi_user
-      POSTGRES_PASSWORD: vpi_dev_pw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vpi_dev_pw}
       POSTGRES_DB: vpi_development
     volumes:
       - postgres_data:/var/lib/postgresql/data
