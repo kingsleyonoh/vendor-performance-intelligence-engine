@@ -1,0 +1,10 @@
+# Vendor Performance Intelligence Engine — backup cron schedule
+#
+# Daily at 02:30 UTC (off-peak; after `PartitionManagerJob` finishes at
+# 01:00 and after `AllVendorsRescoreJob` at 02:00 — keeps backup window
+# clear of heavy DB writes).
+#
+# supercronic accepts the standard 5-field cron expression. Output goes
+# to stdout/stderr which the docker engine ships to its log driver.
+
+30 2 * * * /home/vpi-backup/backup.sh

@@ -12,11 +12,7 @@ name: vendor-performance-intelligence-engine
 
 services:
   migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    image: vendor-performance-intelligence-engine:latest
+    image: ${VPI_IMAGE:-ghcr.io/kings-data-quest/vendor-performance-intelligence-engine:latest}
     container_name: vpi-migrate
     restart: "no"
     env_file:
@@ -29,11 +25,7 @@ services:
       - vpi-internal
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    image: vendor-performance-intelligence-engine:latest
+    image: ${VPI_IMAGE:-ghcr.io/kings-data-quest/vendor-performance-intelligence-engine:latest}
     container_name: vpi-web
     restart: unless-stopped
     env_file:
@@ -79,7 +71,7 @@ services:
         max-file: "3"
 
   worker:
-    image: vendor-performance-intelligence-engine:latest
+    image: ${VPI_IMAGE:-ghcr.io/kings-data-quest/vendor-performance-intelligence-engine:latest}
     container_name: vpi-worker
     restart: unless-stopped
     env_file:
@@ -159,10 +151,37 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  postgres-backup:
+    build:
+      context: ./deploy/backup
+      dockerfile: Dockerfile
+    image: vpi-postgres-backup:latest
+    container_name: vpi-postgres-backup
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL specifically for the backup service so it
+      # talks to the internal `postgres` hostname, not the public one.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vpi_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-vpi_production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backups_data:/var/vpi/backups
+    networks:
+      - vpi-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres_data:
   redis_data:
   reports_data:
+  backups_data:
 
 networks:
   traefik-public:
