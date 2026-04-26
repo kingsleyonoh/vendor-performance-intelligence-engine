@@ -34,6 +34,16 @@ else
   ActiveSupport::Cache::RedisCacheStore.new(url: redis_url)
 end
 
+# Performance-benchmark escape hatch (test/perf/* harness). When `true`, the
+# entire Rack::Attack middleware short-circuits — no throttles, no safelists,
+# no responder. ONLY honored in non-production environments so this can never
+# silently weaken prod. The benchmark harness sets this for the booted Puma
+# so 500-iteration roundtrips don't trip per-tenant 600/min caps. Production
+# leaves it unset → strict §8b enforcement unchanged.
+if ENV["RACK_ATTACK_DISABLE"].to_s == "true" && !Rails.env.production?
+  Rack::Attack.enabled = false
+end
+
 # ---------------------------------------------------------------------------
 # Safelists — paths that MUST NEVER be throttled.
 # ---------------------------------------------------------------------------
