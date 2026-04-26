@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} — Coding Standards: Domain & Production
+# Vendor Performance Intelligence Engine — Coding Standards: Domain & Production
 
 > Part 4 of 4. Also loaded: `CODING_STANDARDS.md`, `CODING_STANDARDS_TESTING.md`, `CODING_STANDARDS_TESTING_LIVE.md`
 
@@ -6,7 +6,7 @@
 
 ### Dev Branch Workflow
 1. All implementation work happens on `dev` branch
-2. Tests run against local services ({{LOCAL_SERVICES}})
+2. Tests run against local services (local PostgreSQL, local Redis, local NATS (optional))
 3. Each completed item → commit → push to `dev`
 4. Run full test suite frequently
 
@@ -65,6 +65,8 @@ Every config-driven surface renders against an **immutable snapshot** captured a
 - `validate-prd` and `security-audit` grep template directories for tenant literals. Matches = `TENANT_IDENTITY_LEAK`.
 
 **If you hit a missing field:** apply "No Silent Workarounds" (`CODING_STANDARDS.md`). Escalate for schema extension. Do not hardcode.
+
+**VPI-specific binding (Rails):** the project's `TenantSnapshot` shape is built by `lib/tenants/capture_snapshot.rb` (`Tenants::CaptureSnapshot(tenant_id)` — see PRD §4.T + §5.5 + §5.6). Every PDF scorecard renders against a frozen copy stored in `vendor_reports.render_context`; every Hub event payload renders against a frozen copy stored in `risk_alerts.delivery_payload`. The snapshot is captured ONCE (at `queued → generating` for reports, at alert creation for alerts) and never re-queried. Re-renders bind to the stored snapshot — never to a live `tenants` read. Backing columns: `legal_name`, `full_legal_name`, `display_name`, `address`, `registration`, `contact`, `wordmark_url`, `brand_primary_hex`, `brand_accent_hex`, `locale`, `timezone` (all on the `tenants` row per PRD §4.1).
 
 ## Environment Variables
 - `.env` for local development (NEVER committed)

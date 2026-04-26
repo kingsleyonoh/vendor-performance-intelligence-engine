@@ -1,0 +1,104 @@
+# Tenant-scoped vendor directory. Each tenant gets ≥4 vendors spanning
+# different bands + statuses so dashboard KPIs + vendors-list filters have
+# meaningful data. Names are intentionally distinct per tenant to catch
+# cross-tenant leakage (TENANT_IDENTITY_LEAK grep).
+
+# ---------- Acme vendors ----------
+acme_alpha:
+  tenant: acme_gmbh_de
+  canonical_name: Alpha Maschinenbau AG
+  normalized_name: alpha maschinenbau ag
+  tax_id: DE111111111
+  country_code: DE
+  category: machinery
+  annual_spend_cents: 1200000000
+  currency: EUR
+  status: active
+  metadata: <%= {}.to_json %>
+  created_at: 2026-02-01 00:00:00
+  updated_at: 2026-04-01 00:00:00
+
+acme_beta:
+  tenant: acme_gmbh_de
+  canonical_name: Beta Elektronik GmbH
+  normalized_name: beta elektronik gmbh
+  tax_id: DE222222222
+  country_code: DE
+  category: electronics
+  annual_spend_cents: 800000000
+  currency: EUR
+  status: active
+  metadata: <%= {}.to_json %>
+  created_at: 2026-02-10 00:00:00
+  updated_at: 2026-04-10 00:00:00
+
+acme_gamma:
+  tenant: acme_gmbh_de
+  canonical_name: Gamma Werkzeuge GmbH
+  normalized_name: gamma werkzeuge gmbh
+  tax_id: DE333333333
+  country_code: DE
+  category: tooling
+  annual_spend_cents: 150000000
+  currency: EUR
+  status: watchlist
+  metadata: <%= {}.to_json %>
+  created_at: 2026-02-15 00:00:00
+  updated_at: 2026-04-15 00:00:00
+
+acme_delta:
+  tenant: acme_gmbh_de
+  canonical_name: Delta Logistik GmbH
+  normalized_name: delta logistik gmbh
+  tax_id: DE444444444
+  country_code: DE
+  category: logistics
+  annual_spend_cents: 50000000
+  currency: EUR
+  status: terminated
+  metadata: <%= {}.to_json %>
+  created_at: 2026-01-01 00:00:00
+  updated_at: 2026-03-01 00:00:00
+
+# ---------- Globex vendors ----------
+globex_zeta:
+  tenant: globex_inc_us
+  canonical_name: Zeta Industrial Supply Inc.
+  normalized_name: zeta industrial supply inc
+  tax_id: US555555555
+  country_code: US
+  category: industrial
+  annual_spend_cents: 2000000000
+  currency: USD
+  status: active
+  metadata: <%= {}.to_json %>
+  created_at: 2026-02-05 00:00:00
+  updated_at: 2026-04-05 00:00:00
+
+globex_eta:
+  tenant: globex_inc_us
+  canonical_name: Eta Chemical Co.
+  normalized_name: eta chemical co
+  tax_id: US666666666
+  country_code: US
+  category: chemicals
+  annual_spend_cents: 500000000
+  currency: USD
+  status: active
+  metadata: <%= {}.to_json %>
+  created_at: 2026-02-20 00:00:00
+  updated_at: 2026-04-20 00:00:00
+
+globex_theta:
+  tenant: globex_inc_us
+  canonical_name: Theta Freight LLC
+  normalized_name: theta freight llc
+  tax_id: US777777777
+  country_code: US
+  category: logistics
+  annual_spend_cents: 75000000
+  currency: USD
+  status: active
+  metadata: <%= {}.to_json %>
+  created_at: 2026-03-01 00:00:00
+  updated_at: 2026-04-01 00:00:00

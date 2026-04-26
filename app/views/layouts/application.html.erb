@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html style="--brand-primary: <%= UiBrand.primary_for(Current.tenant) %>; --brand-accent: <%= UiBrand.accent_for(Current.tenant) %>;">
+  <head>
+    <title><%= content_for(:title) || "VPI — #{UiBrand.display_name_for(Current.tenant)}" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+  </head>
+
+  <body class="min-h-screen" style="background-color: #F7FAFC; color: #1A202C;">
+    <% if authenticated? %>
+      <%= render ::Layouts::TopNavComponent.new(tenant: Current.tenant, user: Current.user) %>
+      <div class="flex">
+        <%= render ::Layouts::SidebarComponent.new(current_path: request.path) %>
+        <main class="flex-1 p-6">
+          <% if notice = flash[:notice] %>
+            <p class="mb-4 py-2 px-3 rounded-md text-sm" style="background-color: #C6F6D5; color: #22543D;" data-testid="flash-notice"><%= notice %></p>
+          <% end %>
+          <% if alert = flash[:alert] %>
+            <p class="mb-4 py-2 px-3 rounded-md text-sm" style="background-color: #FED7D7; color: #742A2A;" data-testid="flash-alert"><%= alert %></p>
+          <% end %>
+          <%= yield %>
+        </main>
+      </div>
+    <% else %>
+      <main class="container mx-auto mt-28 px-5">
+        <%= yield %>
+      </main>
+    <% end %>
+  </body>
+</html>

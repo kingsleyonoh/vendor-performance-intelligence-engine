@@ -1,0 +1,30 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: http://workflow-engine.example.test/api/workflows/vpi-risk-escalation-default/execute
+    body:
+      encoding: UTF-8
+      string: '{"alert_id":"alrt-789","tenant":{"slug":"acme"},"vendor":{"id":"v-1"}}'
+    headers:
+      Content-Type:
+      - application/json
+      X-Api-Key:
+      - "[FILTERED_API_KEY]"
+      User-Agent:
+      - vpi/0.1 (faraday)
+      Accept:
+      - application/json
+  response:
+    status:
+      code: 202
+      message: Accepted
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"execution_id":"wf-exec-cassette-001","status":"queued"}'
+    http_version: '1.1'
+  recorded_at: Thu, 23 Apr 2026 12:00:00 GMT
+recorded_with: VCR 6.3

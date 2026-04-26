@@ -1,0 +1,61 @@
+<% content_for :title, "Alerts — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-4">
+  <header class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Alerts</h1>
+      <p class="text-sm text-gray-500">Risk-band-change inbox for <%= UiBrand.display_name_for(Current.tenant) %>.</p>
+    </div>
+  </header>
+
+  <%= form_with url: alerts_path, method: :get, scope: nil, local: true,
+                data: { testid: "alerts-filters" },
+                class: "flex flex-wrap items-end gap-3 bg-white rounded-lg shadow-sm p-3" do %>
+    <label class="text-xs text-gray-600">
+      Band
+      <select name="band" class="block rounded-md border border-gray-300 px-2 py-1 text-sm">
+        <option value="">All</option>
+        <% %w[low medium high critical].each do |b| %>
+          <option value="<%= b %>" <%= "selected" if @filters[:band] == b %>><%= b %></option>
+        <% end %>
+      </select>
+    </label>
+    <label class="text-xs text-gray-600">
+      Status
+      <select name="status" class="block rounded-md border border-gray-300 px-2 py-1 text-sm">
+        <option value="">Default (active)</option>
+        <% %w[pending dispatching delivered acknowledged failed suppressed resolved].each do |s| %>
+          <option value="<%= s %>" <%= "selected" if @filters[:status] == s %>><%= s %></option>
+        <% end %>
+      </select>
+    </label>
+    <button type="submit" class="rounded-md px-3 py-1 text-sm font-medium text-white"
+            style="background-color: var(--brand-accent);">Apply</button>
+  <% end %>
+
+  <% if @alerts.empty? %>
+    <p class="p-6 bg-white rounded-lg text-sm text-gray-500 shadow-sm" data-testid="alerts-empty">
+      No alerts match the current filters.
+    </p>
+  <% else %>
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <table class="w-full" data-testid="alerts-table">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-3 py-2 text-left">Vendor</th>
+            <th class="px-3 py-2 text-left">Band change</th>
+            <th class="px-3 py-2 text-left">Score</th>
+            <th class="px-3 py-2 text-left">Created</th>
+            <th class="px-3 py-2 text-left">Status</th>
+            <th class="px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @alerts.each do |alert| %>
+            <%= render Alerts::InboxRowComponent.new(alert: alert) %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

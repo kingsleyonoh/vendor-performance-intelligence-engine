@@ -1,0 +1,31 @@
+# Vendor Performance Intelligence Engine — database configuration.
+#
+# Dev + test resolve compose-service `postgres` via docker DNS (see
+# docker-compose.yml). Host port 5434 is irrelevant from inside the dev
+# container — only the compose-internal 5432 is used.
+#
+# Production resolves via DATABASE_URL; the primary database is the only one
+# the engine needs (Sidekiq 7 uses Redis for its queues, not Solid Queue).
+# If Phase 3 introduces Solid Queue / Solid Cache / Solid Cable, add the
+# auxiliary databases then — not speculatively now.
+
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV.fetch("POSTGRES_HOST", "postgres") %>
+  port: <%= ENV.fetch("POSTGRES_PORT", "5432") %>
+  username: <%= ENV.fetch("POSTGRES_USER", "vpi_user") %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD", "vpi_dev_pw") %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB", "vpi_development") %>
+
+test:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_TEST_DB", "vpi_test") %>
+
+production:
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>

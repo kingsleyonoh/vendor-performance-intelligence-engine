@@ -1,0 +1,28 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: http://recon-engine.example.test/api/v1/discrepancies?page=1&source=vendor
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - "[FILTERED_API_KEY]"
+      User-Agent:
+      - vpi/0.1 (faraday)
+      Accept:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"discrepancies":[{"id":"dx-1","vendor_ref":"v-acme-1","amount_cents":12500,"status":"open"}],"page":1,"total":1}'
+    http_version: '1.1'
+  recorded_at: Thu, 23 Apr 2026 12:00:00 GMT
+recorded_with: VCR 6.3

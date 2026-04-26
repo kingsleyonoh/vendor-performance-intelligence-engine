@@ -1,0 +1,31 @@
+<tr id="<%= dom_id %>" class="border-b border-gray-100 hover:bg-gray-50"
+    data-testid="alert-row"
+    data-alert-id="<%= alert.id %>"
+    data-alert-vendor="<%= vendor.canonical_name %>">
+  <td class="px-3 py-2 text-sm font-medium text-gray-900">
+    <%= link_to vendor.canonical_name, vendor_path(vendor),
+                class: "hover:underline",
+                data: { testid: "alert-vendor-link" } %>
+  </td>
+  <td class="px-3 py-2">
+    <%= render Alerts::BandChangePillComponent.new(previous_band: alert.previous_band, new_band: alert.new_band) %>
+  </td>
+  <td class="px-3 py-2 text-sm font-mono text-gray-700"><%= alert.new_score.to_f.round(1) %></td>
+  <td class="px-3 py-2 text-xs text-gray-500"><%= relative_time %></td>
+  <td class="px-3 py-2 text-xs"><span data-testid="alert-status"><%= alert.status %></span></td>
+  <td class="px-3 py-2 text-xs text-right space-x-2">
+    <% if can_acknowledge? %>
+      <%= button_to "Acknowledge", acknowledge_alert_path(alert),
+                    method: :post,
+                    data: { testid: "alert-ack-btn" },
+                    class: "rounded-md px-2 py-1 text-xs font-medium text-white",
+                    style: "background-color: var(--brand-accent);" %>
+    <% end %>
+    <% if can_retry? %>
+      <%= button_to "Retry", retry_alert_path(alert),
+                    method: :post,
+                    data: { testid: "alert-retry-btn" },
+                    class: "rounded-md px-2 py-1 text-xs font-medium border border-gray-300" %>
+    <% end %>
+  </td>
+</tr>

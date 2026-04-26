@@ -1,0 +1,53 @@
+<% content_for :title, "#{@source.source_system} — Ingestion Sources" %>
+
+<div class="space-y-4">
+  <header class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @source.source_system %></h1>
+      <p class="text-sm text-gray-500">
+        <%= link_to "← Back to ingestion sources", settings_ingestion_sources_path,
+              class: "text-sm text-gray-600 hover:underline" %>
+      </p>
+    </div>
+    <div class="space-x-2">
+      <%= link_to "Edit", edit_settings_ingestion_source_path(@source),
+            class: "rounded-md px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50" %>
+      <%= button_to "Pull Now", pull_now_settings_ingestion_source_path(@source),
+            method: :post,
+            class: "rounded-md px-3 py-2 text-sm font-medium text-white",
+            style: "background-color: var(--brand-accent);",
+            data: { testid: "pull-now-btn" } %>
+    </div>
+  </header>
+
+  <section class="bg-white rounded-lg shadow-sm p-4 text-sm space-y-2">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="text-xs uppercase tracking-wide text-gray-500">Enabled</div>
+        <div class="font-medium"><%= @source.is_enabled ? "Yes" : "No" %></div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-gray-500">Pull mode</div>
+        <div class="font-medium"><%= @source.pull_mode %></div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-gray-500">Last successful pull</div>
+        <div class="font-medium"><%= @source.last_successful_pull&.strftime("%Y-%m-%d %H:%M UTC") || "—" %></div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-gray-500">Last attempted pull</div>
+        <div class="font-medium"><%= @source.last_attempted_pull&.strftime("%Y-%m-%d %H:%M UTC") || "—" %></div>
+      </div>
+    </div>
+    <% if @source.last_failure_reason.present? %>
+      <div class="text-xs text-red-700 mt-2">
+        Last failure: <%= @source.last_failure_reason %>
+      </div>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold text-gray-700 mb-2">Recent runs</h2>
+    <%= render Settings::RunHistoryTableComponent.new(runs: @recent_runs) %>
+  </section>
+</div>

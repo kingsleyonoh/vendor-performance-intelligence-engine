@@ -1,0 +1,45 @@
+<section class="bg-white rounded-lg shadow-sm p-5" data-testid="rag-enrichment-card">
+  <div class="flex items-baseline justify-between mb-3">
+    <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500">
+      Background &amp; Relationships
+    </h2>
+    <% if fetched_at %>
+      <span class="text-xs text-gray-400" data-testid="rag-fetched-at">
+        Updated <%= fetched_at.strftime("%Y-%m-%d %H:%M UTC") %>
+      </span>
+    <% end %>
+  </div>
+
+  <% if empty? %>
+    <p class="text-sm text-gray-500" data-testid="rag-empty">
+      No related entities surfaced from the RAG graph.
+    </p>
+  <% else %>
+    <ul class="space-y-3">
+      <% entities.each do |entity| %>
+        <li class="text-sm border-b border-gray-100 pb-2 last:border-b-0 last:pb-0"
+            data-testid="rag-entity-row"
+            data-entity-id="<%= entity['id'] %>">
+          <div class="flex items-baseline justify-between">
+            <div class="font-medium text-gray-900"><%= entity["name"] %></div>
+            <% if entity["type"].present? %>
+              <span class="text-xs text-gray-500 ml-2 font-mono"><%= entity["type"] %></span>
+            <% end %>
+          </div>
+          <% rels = Array(entity["relationships"]) %>
+          <% if rels.any? %>
+            <ul class="mt-1 ml-2 text-xs text-gray-600 space-y-0.5">
+              <% rels.each do |rel| %>
+                <li>
+                  <span class="font-mono text-gray-500"><%= rel["type"] %></span>
+                  <span class="mx-1">→</span>
+                  <span><%= rel["target"] %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

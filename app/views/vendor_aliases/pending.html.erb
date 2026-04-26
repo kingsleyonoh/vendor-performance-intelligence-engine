@@ -1,0 +1,60 @@
+<% content_for :title, "Aliases — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-4">
+  <header>
+    <h1 class="text-2xl font-bold text-gray-900">Pending alias review</h1>
+    <p class="text-sm text-gray-500">
+      Confirm or reject pending vendor aliases. Auto-confirm runs daily at 04:00 UTC for
+      exact tax_id matches; lower-confidence matches need operator review.
+    </p>
+  </header>
+
+  <% if @aliases.empty? %>
+    <p class="p-6 bg-white rounded-lg text-sm text-gray-500 shadow-sm" data-testid="aliases-empty">
+      No pending aliases. Auto-confirm runs daily at 04:00 UTC.
+    </p>
+  <% else %>
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <table class="w-full text-sm" data-testid="aliases-table">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-3 py-2 text-left">Vendor</th>
+            <th class="px-3 py-2 text-left">Source</th>
+            <th class="px-3 py-2 text-left">Source ref</th>
+            <th class="px-3 py-2 text-left">Alias text</th>
+            <th class="px-3 py-2 text-left">Confidence</th>
+            <th class="px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @aliases.each do |alias_row| %>
+            <tr class="border-t" data-testid="alias-row-<%= alias_row.id %>">
+              <td class="px-3 py-2"><%= alias_row.vendor&.canonical_name || "—" %></td>
+              <td class="px-3 py-2 text-gray-600"><%= alias_row.source_system %></td>
+              <td class="px-3 py-2 text-gray-600 font-mono text-xs"><%= alias_row.source_ref %></td>
+              <td class="px-3 py-2"><%= alias_row.alias_text %></td>
+              <td class="px-3 py-2">
+                <span class="px-2 py-0.5 rounded text-xs font-medium"
+                      style="background-color: <%= confidence_bg(alias_row.confidence) %>; color: <%= confidence_fg(alias_row.confidence) %>;">
+                  <%= number_with_precision(alias_row.confidence.to_f, precision: 2) %>
+                </span>
+              </td>
+              <td class="px-3 py-2 text-right space-x-2">
+                <%= button_to "Confirm", confirm_vendor_alias_path(alias_row),
+                      method: :post,
+                      class: "inline-block px-3 py-1 rounded-md text-xs font-medium text-white",
+                      style: "background-color: var(--brand-accent);",
+                      data: { testid: "confirm-#{alias_row.id}" } %>
+                <%= button_to "Reject", reject_vendor_alias_path(alias_row),
+                      method: :post,
+                      class: "inline-block px-3 py-1 rounded-md text-xs font-medium text-white bg-red-600 hover:bg-red-700",
+                      data: { testid: "reject-#{alias_row.id}",
+                              confirm: "Delete this alias mapping?" } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

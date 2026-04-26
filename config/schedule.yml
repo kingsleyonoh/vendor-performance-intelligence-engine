@@ -1,0 +1,68 @@
+# Sidekiq-cron schedule — PRD §7. Loaded by config/initializers/sidekiq.rb.
+# All cron times are UTC.
+
+partition_manager:
+  cron: "0 1 * * *"          # Daily 01:00 UTC — PRD §7
+  class: PartitionManagerJob
+  queue: default
+  description: "Create next-month partition and drop expired ones on vendor_signals."
+
+failed_alert_retry:
+  cron: "*/30 * * * *"       # Every 30 minutes — PRD §7, §15 #6
+  class: "Alerts::FailedAlertRetryJob"
+  queue: default
+  description: "Re-enqueue HubDispatchJob for risk_alerts.status='failed' rows past cooldown."
+
+webhook_engine_signal_pull:
+  cron: "*/10 * * * *"       # Every 10 minutes — PRD §7
+  class: "Ingestion::WebhookEngineSignalPullJob"
+  queue: default
+  description: "Pull integration-reliability stats from Webhook Engine into vendor_signals."
+
+invoice_recon_backfill:
+  cron: "*/15 * * * *"       # Every 15 minutes — PRD §7
+  class: "Ingestion::InvoiceReconBackfillJob"
+  queue: default
+  description: "Pull financial vendor stats (late/dispute/overbilling) from Invoice Reconciliation Engine."
+
+contract_lifecycle_backfill:
+  cron: "*/15 * * * *"       # Every 15 minutes — PRD §7
+  class: "Ingestion::ContractLifecycleBackfillJob"
+  queue: default
+  description: "REST catch-up for contractual stats from Contract Lifecycle Engine (complements NATS consumer)."
+
+transaction_recon_backfill:
+  cron: "*/15 * * * *"       # Every 15 minutes — PRD §7 (feature-flagged via RECON_ENGINE_ENABLED)
+  class: "Ingestion::TransactionReconBackfillJob"
+  queue: default
+  description: "Pull transactional reconciliation stats (discrepancy/unmatched/reject/late settlement) from Transaction Reconciliation Engine."
+
+stale_ingestion_monitor:
+  cron: "0 * * * *"          # Hourly at :00 — PRD §7b, §13.2
+  class: "Monitors::StaleIngestionMonitorJob"
+  queue: default
+  description: "Detects ingestion sources with last_successful_pull > 24h and emits Hub event vpi-ingestion-stale (idempotent within 6h)."
+
+expired_report_reaper:
+  cron: "5 * * * *"          # Hourly at :05 — PRD §7, §13.3
+  class: "Reports::ExpiredReportReaperJob"
+  queue: default
+  description: "Marks expired vendor_reports rows and deletes their storage_path files."
+
+all_vendors_rescore:
+  cron: "0 2 * * *"          # Daily 02:00 UTC — PRD §7, §13.3
+  class: "Scoring::AllVendorsRescoreJob"
+  queue: default
+  description: "Fans out ScoreRecomputeJob for every active vendor across every tenant."
+
+alias_auto_confirm:
+  cron: "0 4 * * *"          # Daily 04:00 UTC — PRD §7, §7b, §13.3
+  class: "Ingestion::AliasAutoConfirmJob"
+  queue: default
+  description: "Auto-confirms exact tax_id alias matches and emits Hub event vpi-alias-review when pending count > 20."
+
+rag_enrichment:
+  cron: "0 3 * * *"          # Daily 03:00 UTC — PRD §7, §13.3 (feature-flagged via RAG_PLATFORM_ENABLED)
+  class: "RagEnrichmentJob"
+  queue: default
+  description: "Pulls vendor background entities + relationships from RAG Platform graph endpoint into vendors.metadata.rag_enrichment."

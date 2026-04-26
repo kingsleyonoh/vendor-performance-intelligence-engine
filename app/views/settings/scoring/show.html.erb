@@ -1,0 +1,97 @@
+<% content_for :title, "Scoring Rules — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="max-w-3xl space-y-6">
+  <header>
+    <h1 class="text-2xl font-bold text-gray-900">Scoring rules</h1>
+    <p class="text-sm text-gray-500">
+      Tune category weights and band thresholds for <%= UiBrand.display_name_for(Current.tenant) %>.
+      Saving creates a new rule and activates it; the previously-active rule is retained for audit.
+    </p>
+  </header>
+
+  <% if @active_rule %>
+    <div class="bg-white border rounded-md p-4">
+      <h2 class="text-sm font-medium text-gray-700">Active rule</h2>
+      <p class="text-base text-gray-900 mt-1"><strong><%= @active_rule.name %></strong>
+        <span class="text-xs text-gray-500">— activated <%= @active_rule.activated_at&.iso8601 %></span></p>
+    </div>
+  <% end %>
+
+  <div class="bg-white border rounded-md p-4">
+    <%= form_with url: settings_scoring_path, method: :post, local: true,
+                  data: { testid: "scoring-rule-form" }, class: "space-y-4" do |f| %>
+      <% rule = @form_rule %>
+      <% weights = rule.category_weights.is_a?(Hash) ? rule.category_weights.transform_keys(&:to_s) : {} %>
+      <% thresholds = rule.band_thresholds.is_a?(Hash) ? rule.band_thresholds.transform_keys(&:to_s) : {} %>
+
+      <label class="block">
+        <span class="block text-xs text-gray-600 mb-1">Name</span>
+        <%= f.text_field "scoring_rule[name]", value: rule.name,
+              class: "w-full border rounded p-2 text-sm" %>
+      </label>
+
+      <fieldset class="border rounded p-3">
+        <legend class="text-xs font-medium text-gray-700 px-1">Category weights (must sum to 1.00)</legend>
+        <div class="grid grid-cols-2 gap-3">
+          <% ScoringRule::CATEGORIES.each do |cat| %>
+            <label class="block">
+              <span class="block text-xs text-gray-600 mb-1"><%= cat.humanize %></span>
+              <%= f.number_field "scoring_rule[category_weights][#{cat}]",
+                    value: (weights[cat] || 0).to_f,
+                    step: 0.01, min: 0, max: 1,
+                    class: "w-full border rounded p-2 text-sm",
+                    data: { testid: "weight-#{cat}" } %>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3">
+        <legend class="text-xs font-medium text-gray-700 px-1">Band thresholds (low_max &lt; medium_max &lt; high_max)</legend>
+        <div class="grid grid-cols-3 gap-3">
+          <% %w[low_max medium_max high_max].each do |key| %>
+            <label class="block">
+              <span class="block text-xs text-gray-600 mb-1"><%= key.humanize %></span>
+              <%= f.number_field "scoring_rule[band_thresholds][#{key}]",
+                    value: (thresholds[key] || 0).to_f,
+                    step: 0.1, min: 0, max: 100,
+                    class: "w-full border rounded p-2 text-sm" %>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="block text-xs text-gray-600 mb-1">Window (days)</span>
+          <%= f.number_field "scoring_rule[window_days]", value: rule.window_days,
+                step: 1, min: 1, max: 365, class: "w-full border rounded p-2 text-sm" %>
+        </label>
+        <label class="block">
+          <span class="block text-xs text-gray-600 mb-1">Half-life (days)</span>
+          <%= f.number_field "scoring_rule[time_decay_half_life_days]",
+                value: rule.time_decay_half_life_days,
+                step: 1, min: 1, max: 365, class: "w-full border rounded p-2 text-sm" %>
+        </label>
+      </div>
+
+      <div class="flex justify-end">
+        <%= f.submit "Save and activate",
+              class: "px-4 py-2 rounded-md text-sm font-medium text-white",
+              style: "background-color: var(--brand-accent);",
+              data: { testid: "save-rule" } %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @active_rule %>
+    <div class="bg-white border rounded-md p-4">
+      <h2 class="text-sm font-medium text-gray-700">Preview</h2>
+      <p class="text-xs text-gray-500 mt-1">
+        Use the JSON API <code>POST /api/scoring_rules/<%= @active_rule.id %>/preview</code>
+        to dry-run the candidate against a 10-vendor sample (PRD §15 #7). Live preview UI is
+        wired to that endpoint in a follow-up batch.
+      </p>
+    </div>
+  <% end %>
+</div>

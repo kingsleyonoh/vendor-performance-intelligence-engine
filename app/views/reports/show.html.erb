@@ -1,0 +1,33 @@
+<% content_for :title, "Report #{@report.id[0,8]} — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="mb-4">
+  <%= link_to "← Back to reports", reports_path, class: "text-sm text-gray-500 hover:underline" %>
+</div>
+
+<h1 class="text-2xl font-semibold mb-4"><%= @report.report_type.humanize %></h1>
+
+<div class="bg-white border rounded-md p-4 space-y-2 text-sm">
+  <div><span class="text-gray-500">ID:</span> <%= @report.id %></div>
+  <div><span class="text-gray-500">Status:</span> <%= @report.status %></div>
+  <div><span class="text-gray-500">Output format:</span> <%= @report.output_format %></div>
+  <% if @vendor %>
+    <div><span class="text-gray-500">Vendor:</span> <%= @vendor.canonical_name %></div>
+  <% end %>
+  <% if @report.generated_at %>
+    <div><span class="text-gray-500">Generated at:</span> <%= l(@report.generated_at, format: :long) %></div>
+  <% end %>
+  <% if @report.expires_at %>
+    <div><span class="text-gray-500">Expires at:</span> <%= l(@report.expires_at, format: :long) %></div>
+  <% end %>
+  <% if @report.error_summary.present? %>
+    <div class="text-red-700"><span class="text-gray-500">Error:</span> <%= @report.error_summary %></div>
+  <% end %>
+</div>
+
+<% if @report.status == "ready" %>
+  <div class="mt-4">
+    <%= link_to "Download", download_report_path(@report),
+          class: "px-3 py-1.5 rounded-md text-sm font-medium text-white",
+          style: "background-color: var(--brand-accent);" %>
+  </div>
+<% end %>

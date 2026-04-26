@@ -1,12 +1,25 @@
 # Shared Foundation — Index
 
-> **One file per foundation primitive.** This index is a human-readable catalog, rewritten by the AI whenever a sibling file is added, renamed, or removed. Never append to a single growing table — write a new sibling instead. See `.agent/rules/CODING_STANDARDS.md` — "Append-Only Knowledge Files Banned."
+> **One file per foundation primitive.** This index is a human-readable catalog, rewritten by the AI whenever a sibling file is added, renamed, or removed. Never append to a single growing table — write a new sibling instead. See `.claude/rules/CODING_STANDARDS.md` — "Append-Only Knowledge Files Banned."
 
 ## Catalog
 
 | File | Summary |
 |------|---------|
-| `EXAMPLE.md` | Template showing the expected shape — delete once a real foundation primitive exists. |
+| `api-error-response-shape.md` | JSON:API-style `{error:{code,message,details?}}` envelope + the 8 canonical codes + HTTP status mapping (PRD §8b). Bound by every controller, middleware, and 429 emitter. |
+| `tenant-scoping-pattern.md` | `Current.tenant` (`ActiveSupport::CurrentAttributes`) + `(tenant_id, …)` composite indexes + cross-tenant → 404 (never 403). PRD §2 Architecture Principle 1 invariant. |
+| `auth-guard-pattern.md` | Two-layer auth: `ApiKeyAuthenticator` Rack middleware (authentication, sets `Current.tenant`) + ActionPolicy (authorization, raises on deny). Stateless `Api::*` via `ActionController::API`. |
+| `state-management-pattern.md` | UI multi-step flows: **server is the source of truth**, Turbo Frames for partial updates, ViewComponent for rendering, Stimulus for DOM behavior only. No client-side business state. |
+| `cache-helpers.md` | Three-tier memoization convention: `Cache::RequestCache` (generic `vpi:<ns>:<key>` wrapper) -> `Cache::TenantCache` (api_key_prefix -> tenant_id, 60 s TTL) -> `Cache::ScoringConfigCache` (scoring_rules per tenant, 300 s TTL). PRD §10b. |
+| `session-auth-pattern.md` | Two distinct auth surfaces: Rails 8 built-in session auth (email + password cookie) for UI (`/session`, `/passwords`); `X-API-Key` middleware for `/api/*`. Never cross-pollinate. PRD §5b, §8. |
+| `audit-recorder.md` | `Audit::Recorder.record(...)` — single entry point every mutating controller + job calls. Emits tagged JSON log line in Batch 005; becomes an `audit_log` INSERT in Phase 3. PRD §4.12. |
+| `tenant-snapshot-shape.md` | `Tenants::CaptureSnapshot.call(tenant_id)` — frozen `{id, slug, §4.T identity, snapshot_at}` hash that binds every template surface (PDF, Hub payload, email). Captured once at alert/report emission; never re-queried. PRD §4.T + §5.5 + §5.6. |
+| `render-context-shape.md` | `Reports::CaptureRenderContext.call(vendor_report:)` — deep-frozen `{schema_version, tenant, report, data, links}` hash stored in `vendor_reports.render_context` at queued → generating. Re-renders bind to the stored snapshot forever — byte-identical PDFs across tenant mutations (PRD §15 #13). PRD §5.6. |
+| `name-normalization.md` | `Ingestion::NameNormalizer.call(raw)` — pure function: raw vendor name → deterministic fuzzy-match key (lowercased, ASCII-ish, legal-suffix-stripped). Consumed by `Vendor` model (`before_validation`) + `Ingestion::VendorResolver`. PRD §5.2. |
+| `vendor-resolution-flow.md` | `Ingestion::VendorResolver.resolve(...)` — the 5-rung ladder that translates `(source_system, source_ref, hints)` → canonical `vendor_id` (+ `vendor_alias` row for idempotency). Confidence levels 1.00 / 0.85 / 0.70. PRD §5.2. |
+| `scoring-primitives.md` | `Scoring::SignalScalers.scale(...)` + `Scoring::TimeDecay.weight(...)` — two pure functions the composite scorer composes. Scaler maps every `value_type` × `direction` to 0..100 contribution; decay is `0.5 ^ (age / half_life)`. Clamp-on-data, raise-on-config. PRD §5.4. |
+| `signal-ingestion-pipeline.md` | `Ingestion::SignalIngester.call(payload:, tenant:)` — the single entry point every signal source (REST push, NATS, Hub fanout, pull, manual) uses to turn a raw payload into a `vendor_signals` row. Validates (`SignalValidator` dry-validation), dedups on `(tenant, source_system, source_event_id)`, resolves vendor, rejects terminated vendors, inserts, fires `post_insert_hook` (Phase 2 wires to `ScoreRecomputeJob`). 8 rejection-reason sentinels. PRD §5.3. |
+| `ecosystem-client-pattern.md` | Canonical Faraday 2 + retry + circuit-breaker shape every `lib/ecosystem/<service>_client.rb` follows. `Ecosystem::HubClient` is the reference implementation; sibling clients (Workflow Engine, Webhook Engine, Invoice Recon, Contract Lifecycle, Transaction Recon, RAG Platform) mirror its singleton lifecycle, `<SERVICE>_ENABLED` flag honoring, terminal-shape contract (`{:sent | :failed | :skipped}` or raise `TransientFailure` / `CircuitOpen`). PRD §6 + §6b + §2.2. |
 
 ## What belongs here
 
@@ -19,8 +32,9 @@ Primitives imported by 3+ modules or that establish a project-wide contract. Exa
 ## How to add a new foundation primitive
 
 1. Filename pattern: `category-slug.md` (e.g. `core-config-loading.md`, `db-pool-singleton.md`, `plugin-auth.md`).
-2. Use the What it establishes / Files / When to read shape from `EXAMPLE.md`.
+2. Use the What it establishes / Files / When to read shape (mirror one of the existing files).
 3. Add one row to the `## Catalog` table above.
+4. Mirror the file into `.claude/knowledge/foundation/` (dual-mirror convention).
 
 ## Why directory-per-kind
 

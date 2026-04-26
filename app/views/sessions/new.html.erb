@@ -1,0 +1,2 @@
+<% content_for :title, "VPI — Sign in" %>
+<%= render Auth::LoginFormComponent.new(email: params[:email_address], alert: flash[:alert]) %>

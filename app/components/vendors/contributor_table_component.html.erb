@@ -1,0 +1,28 @@
+<section class="bg-white rounded-lg shadow-sm p-5" data-testid="contributor-table">
+  <h2 class="text-sm uppercase tracking-wide font-semibold text-gray-500 mb-3">Top contributors</h2>
+
+  <% if empty? %>
+    <p class="text-sm text-gray-500" data-testid="contributor-empty">No contributing signals on the latest score.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-xs uppercase tracking-wide text-gray-500">
+        <tr>
+          <th class="px-2 py-1 text-left">Signal</th>
+          <th class="px-2 py-1 text-right">Value</th>
+          <th class="px-2 py-1 text-right">Contribution</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% contributors.each do |c| %>
+          <tr class="border-t border-gray-100" data-testid="contributor-row">
+            <td class="px-2 py-1 font-mono text-gray-900"><%= c["signal_code"] || c[:signal_code] %></td>
+            <td class="px-2 py-1 font-mono text-right text-gray-700"><%= c["value"] || c[:value] %></td>
+            <td class="px-2 py-1 font-mono text-right text-gray-900">
+              <%= (c["contribution"] || c[:contribution]).to_f.round(2) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</section>

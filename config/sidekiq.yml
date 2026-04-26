@@ -1,0 +1,21 @@
+# Sidekiq 7 worker configuration.
+#
+# Queue priorities chosen per PRD §7 job table:
+#   critical — alert dispatch (HubDispatchJob, WorkflowEscalationJob) + score
+#              recomputes that gate band-crossing notifications
+#   default  — all scheduled jobs (backfills, daily rescore, partition manager)
+#   low      — reports + RAG enrichment (user-tolerant latency)
+#
+# Concurrency is tunable via SIDEKIQ_CONCURRENCY (PRD §14). Dev defaults to 2
+# to keep laptop noise low; production sizes to VPS core count.
+#
+# Recurring schedule lives in config/recurring.yml (added when jobs land in
+# Phase 1 / Phase 2); the key is referenced here so Sidekiq auto-loads it
+# without a separate cron gem.
+
+:concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 5) %>
+:queues:
+  - [critical, 3]
+  - [default, 2]
+  - [low, 1]
+:schedule_file: config/recurring.yml

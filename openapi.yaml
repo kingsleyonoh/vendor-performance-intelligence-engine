@@ -1,0 +1,200 @@
+# OpenAPI 3.1 — Vendor Performance Intelligence Engine
+# Populated by /bootstrap from PRD §8b. Full request/response schemas filled in during implementation.
+openapi: "3.1.0"
+info:
+  title: "Vendor Performance Intelligence Engine API"
+  description: |
+    Multi-signal behavioral vendor scoring. All endpoints are tenant-scoped via `X-API-Key`.
+    See PRD §8b for full endpoint details; see `docs/vendor-performance-intelligence-engine_prd.md`.
+  version: "0.1.0"
+  contact:
+    name: Kingsley Onoh
+    url: https://kingsleyonoh.com
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://vendors.kingsleyonoh.com
+    description: Production
+security:
+  - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    HubHmacAuth:
+      type: apiKey
+      in: header
+      name: X-Hub-Signature
+paths:
+  /api/tenants/register:
+    post:
+      summary: Self-service tenant registration (public; gated by SELF_REGISTRATION_ENABLED)
+      security: []
+      responses:
+        "201": { description: "Created — returns raw API key ONCE" }  # TODO: define schema
+        "403": { description: "Self-registration disabled" }
+        "429": { description: "Rate limited (5/min/IP)" }
+  /api/tenants/me:
+    get:
+      summary: Current tenant profile
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/tenants/me/rotate-key:
+    post:
+      summary: Rotate API key (old key revoked immediately)
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+
+  /api/signals:
+    post:
+      summary: Push one signal or a batch
+      responses:
+        "200": { description: "Signals accepted/rejected counts" }  # TODO: define schema
+  /api/signals/from-hub:
+    post:
+      summary: Hub event ingress (HMAC-authenticated)
+      security: [{ HubHmacAuth: [] }]
+      responses: { "202": { description: "Accepted" } }  # TODO: define schema
+
+  /api/vendors:
+    get:
+      summary: Paginated vendor list
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+    post:
+      summary: Create vendor
+      responses: { "201": { description: "Created" } }  # TODO: define schema
+  /api/vendors/{id}:
+    get:
+      summary: Vendor detail + current score
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+    patch:
+      summary: Partial vendor update
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/vendors/{id}/merge:
+    post:
+      summary: Merge this vendor into target vendor
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/vendors/{id}/score/current:
+    get:
+      summary: Current composite score snapshot
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/vendors/{id}/score/history:
+    get:
+      summary: Paginated historical score snapshots
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/vendors/{id}/signals:
+    get:
+      summary: Signals for a vendor
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/vendors/{id}/aliases:
+    get: { summary: List aliases, parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }], responses: { "200": { description: "OK" } } }  # TODO: define schema
+    post: { summary: Create alias, parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }], responses: { "201": { description: "Created" } } }  # TODO: define schema
+  /api/vendors/{id}/aliases/{alias_id}:
+    delete:
+      summary: Delete alias
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: alias_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "204": { description: "Deleted" } }
+
+  /api/alerts:
+    get: { summary: Paginated alert list, responses: { "200": { description: "OK" } } }  # TODO: define schema
+  /api/alerts/{id}:
+    get:
+      summary: Alert detail
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/alerts/{id}/acknowledge:
+    post:
+      summary: Acknowledge alert
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/alerts/{id}/suppress:
+    post:
+      summary: Suppress alert pre-delivery
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/alerts/{id}/retry:
+    post:
+      summary: Retry failed Hub dispatch (reuses frozen delivery_payload)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "202": { description: "Retry enqueued" } }  # TODO: define schema
+
+  /api/scoring-rules:
+    get: { summary: List scoring rules, responses: { "200": { description: "OK" } } }  # TODO: define schema
+    post: { summary: Create scoring rule, responses: { "201": { description: "Created" } } }  # TODO: define schema
+  /api/scoring-rules/{id}:
+    get:
+      summary: Scoring rule detail
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/scoring-rules/{id}/activate:
+    post:
+      summary: Activate scoring rule (deactivates the prior active rule)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/scoring-rules/preview:
+    post:
+      summary: Preview band-change deltas on a sample vendor set
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+
+  /api/reports:
+    get: { summary: List reports, responses: { "200": { description: "OK" } } }  # TODO: define schema
+    post: { summary: Queue a new report, responses: { "201": { description: "Queued" } } }  # TODO: define schema
+  /api/reports/{id}:
+    get:
+      summary: Report status + download URL
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/reports/{id}/download:
+    get:
+      summary: Download generated report (CSV/PDF/JSON) — bound to frozen render_context
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+
+  /api/ingestion/sources:
+    get: { summary: List ingestion sources, responses: { "200": { description: "OK" } } }  # TODO: define schema
+    post: { summary: Create ingestion source, responses: { "201": { description: "Created" } } }  # TODO: define schema
+  /api/ingestion/sources/{id}:
+    patch:
+      summary: Update ingestion source
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: "OK" } }  # TODO: define schema
+  /api/ingestion/sources/{id}/pull-now:
+    post:
+      summary: Trigger a pull run immediately
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "202": { description: "Run enqueued" } }  # TODO: define schema
+  /api/ingestion/runs:
+    get: { summary: List ingestion runs, responses: { "200": { description: "OK" } } }  # TODO: define schema
+
+  /api/health:
+    get: { summary: Liveness, security: [], responses: { "200": { description: "OK" } } }
+  /api/health/db:
+    get: { summary: DB readiness, security: [], responses: { "200": { description: "OK" } } }
+  /api/health/redis:
+    get: { summary: Redis readiness, security: [], responses: { "200": { description: "OK" } } }
+  /api/health/ready:
+    get: { summary: Overall readiness (DB + Redis + Sidekiq queue depth), security: [], responses: { "200": { description: "OK" }, "503": { description: "Not ready" } } }

@@ -1,0 +1,21 @@
+Subject: Your report is ready — {{ vendor.canonical_name }} ({{ tenant.display_name }})
+
+Hello {{ tenant.display_name }} team,
+
+Your vendor scorecard is ready to download.
+
+Vendor:        {{ vendor.canonical_name }}
+Country:       {{ vendor.country_code }}
+Category:      {{ vendor.category }}
+Annual spend:  {{ vendor.annual_spend.formatted }}
+
+Current composite score: {{ score.new }} / 100 ({{ score.new_band | upcase }})
+Window: {{ score.window_days }} days
+
+Download: {{ deep_links.vendor_detail }}
+
+This artifact is governed by your tenant's data-retention policy.
+
+— {{ tenant.full_legal_name }}
+{{ tenant.address.line1 }}, {{ tenant.address.city }}, {{ tenant.address.country_code }}
+Support: {{ tenant.contact.email }}

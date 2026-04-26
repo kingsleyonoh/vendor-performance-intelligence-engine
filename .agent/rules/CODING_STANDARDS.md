@@ -1,26 +1,12 @@
-# {{PROJECT_NAME}} — Coding Standards
+# Vendor Performance Intelligence Engine — Coding Standards
 
 > Part 1 of 5. Also loaded: `CODING_STANDARDS_META.md` (skills, env, git branching), `CODING_STANDARDS_TESTING.md` (core TDD), `CODING_STANDARDS_TESTING_LIVE.md` (mock policy + component + backend integration), `CODING_STANDARDS_TESTING_E2E.md` (E2E), `CODING_STANDARDS_DOMAIN.md` (deploy/security)
 
 These rules are ALWAYS ACTIVE. Follow them on every response without being asked.
 
-## Workflow Pipeline Awareness
-- After completing ANY workflow, **read `.agent/workflows/PIPELINE.md`** and suggest the NEXT logical workflow based on the current context.
-- **PIPELINE.md is the single source of truth** for "what comes next." Individual workflows do NOT hardcode their next step — they defer to PIPELINE.md.
-- Never leave the user guessing what to do next. Always end with a clear next step.
-- **When creating a NEW workflow file**, ALWAYS add it to `PIPELINE.md` with its "When Done, Suggest" message.
-- **When deleting a workflow file**, ALWAYS remove it from `PIPELINE.md`.
-- `PIPELINE.md` must ALWAYS match the actual files in `.agent/workflows/`. If they're out of sync, fix `PIPELINE.md` immediately.
+## Workflow Pipeline + Approval Gates
 
-## Workflow Approval Gates (CRITICAL — Prevents Plan Mode Errors)
-When a workflow step says "present to user", "wait for approval", or "approve before proceeding":
-1. Present the content directly as **formatted text in the conversation**.
-2. End with a clear question: `Approve? [yes / no / edit]`
-3. Wait for the user's response before proceeding to the next step.
-4. **NEVER call `ExitPlanMode` or `EnterPlanMode`** during workflow execution. These are Claude Code built-in tools for a separate system (toggled via `Shift+Tab`). Workflow approval gates are handled through direct conversation.
-5. **NEVER write to `.claude/plans/`** during workflow execution — that directory is reserved for Claude Code's built-in plan mode.
-
-This applies to ALL approval gates: batch selection, implementation plans, RED/GREEN/REGRESSION evidence, commit approval, refactor plans, and any other "present and wait" step in any workflow.
+See **`.agent/rules/workflow_rules.md`** for pipeline awareness (PIPELINE.md single-source rule) and approval-gate handling (never call EnterPlanMode, present-as-text pattern).
 
 ## Domain-Specific Rules
 
@@ -28,6 +14,7 @@ If your task touches any of the domains below, **also read the corresponding rul
 
 | When working on... | Also read |
 |--------------------|-----------|
+| Framework / architecture / tenant scoping / snapshot freezing | `.agent/rules/architecture_rules.md` |
 | Authentication / sessions / permissions | `.agent/rules/auth_rules.md` (if exists) |
 | Database / migrations / queries | `.agent/rules/db_rules.md` (if exists) |
 | Background jobs / queues / scheduling | `.agent/rules/jobs_rules.md` (if exists) |
@@ -37,35 +24,7 @@ If your task touches any of the domains below, **also read the corresponding rul
 
 ## Git Commit Convention
 
-**Format:** `type(scope): descriptive message`
-
-| Type | When to use |
-|------|------------|
-| `feat` | New feature or functionality |
-| `fix` | Bug fix |
-| `refactor` | Code restructuring without behavior change |
-| `test` | Adding or updating tests |
-| `docs` | Documentation changes |
-| `chore` | Tooling, workflows, config, dependencies |
-| `style` | Formatting, whitespace, no logic change |
-
-**Scope** = the module, app, or area affected (e.g., `pricing`, `auth`, `db`, `workflows`).
-
-**Rules:**
-- Subject line max 72 characters.
-- Use imperative mood: "add filter" not "added filter".
-- Reference the `[BUG]`/`[FIX]`/`[FEATURE]` from `progress.md` when applicable.
-- One commit per completed item. Don't bundle unrelated changes.
-
-**Examples:**
-```
-feat(pricing): implement UndercutBracket model with tenant FK
-fix(sending): guard against None accounts on sending page
-refactor(db): extract monitoring queries into dedicated mixin
-test(replies): add 11 tests for intent classification edge cases
-docs(context): update CODEBASE_CONTEXT.md with new schema tables
-chore(workflows): add sprint velocity to resume workflow
-```
+See **`.agent/rules/git_rules.md`** for commit format, type taxonomy, and examples.
 
 ## AI Discipline Rules (Prevent Common AI Failures)
 
@@ -118,11 +77,7 @@ chore(workflows): add sprint velocity to resume workflow
 - If you haven't read a file in this conversation, you don't know what's in it. Read it first.
 
 ### Respect .gitignore (CRITICAL — Prevents Accidental Exposure)
-- **NEVER run `git add -f` on ANY file.** If a file is gitignored, it is gitignored ON PURPOSE.
-- `docs/progress.md`, `docs/build-journal/`, `docs/architect_journal.md`, `.agent/workflows/`, `.agent/guides/`, `.agent/agents/`, `.agent/.last-sync`, `.yolo/`, `.claude/`, and PRD files are LOCAL working files (tracked during dev via the `⚠️ TRACKED DURING DEV` pattern, stripped by `/prepare-public`). They must NEVER end up in a public release.
-- **Proprietary files are tracked during development** so all platforms can reference them. `.gitignore` has commented-out entries marked `⚠️ TRACKED DURING DEV` — this is the default. Run `/prepare-public` before making the repo public.
-- If `git status` doesn't show a file as staged after `git add .`, that means `.gitignore` is working correctly. **Do not "fix" it.**
-- The ONLY acceptable staging command is `git add .` (which respects `.gitignore`).
+See `.agent/rules/git_rules.md` — "Respect .gitignore" for the full rule (never `git add -f`, tracked-during-dev pattern, `/prepare-public` flow).
 
 ### Full Read Rule (CRITICAL — Prevents Context Loss)
 - **When ANY workflow instructs you to "read" a file, you MUST read the ENTIRE file from first line to last line.**
@@ -152,3 +107,15 @@ chore(workflows): add sprint velocity to resume workflow
 - **Max 300 lines** per source file. If approaching 250, plan to split.
 - **Max 50 lines** per function/method.
 - **Max 200 lines** per class.
+
+## Framework / Architecture Conventions (Rails 8 — VPI-specific)
+
+Detailed Rails 8 + VPI architecture rules (dependency hierarchy, tenant scoping, append-only signals, snapshot freezing, Rails conventions) live in **`.agent/rules/architecture_rules.md`**. Read it before writing any controller, job, lib/, or model code.
+
+### Preserved Pointers (see elsewhere in this file or siblings)
+- AI Discipline Rules (scope, phantoms, placeholders, silent failures) — above.
+- Full Read Rule — above.
+- Append-Only Knowledge Files Banned — above.
+- No Silent Workarounds — above.
+- Skill Selection & Orchestration — see `CODING_STANDARDS_META.md`.
+- Multi-Tenant Config-Driven Surfaces — see `CODING_STANDARDS_DOMAIN.md`.

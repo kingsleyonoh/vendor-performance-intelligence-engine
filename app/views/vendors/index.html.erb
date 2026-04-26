@@ -1,0 +1,52 @@
+<% content_for :title, "Vendors — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-4">
+  <header class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Vendors</h1>
+      <p class="text-sm text-gray-500"><%= UiBrand.display_name_for(Current.tenant) %> supplier directory.</p>
+    </div>
+  </header>
+
+  <% categories = Vendor.where(tenant_id: Current.tenant.id).where.not(category: nil).distinct.pluck(:category).sort %>
+  <%= render Vendors::FilterPanelComponent.new(filters: @filters, categories: categories) %>
+
+  <%= turbo_frame_tag "vendors-table" do %>
+    <% if @vendors.empty? %>
+      <p class="p-6 bg-white rounded-lg text-sm text-gray-500 shadow-sm" data-testid="vendors-empty">
+        No vendors match the current filters.
+      </p>
+    <% else %>
+      <%= form_with url: bulk_vendors_path, method: :post, class: "bg-white rounded-lg shadow-sm" do %>
+        <table class="w-full" data-testid="vendors-table">
+          <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-3 py-2 text-left w-8"></th>
+              <th class="px-3 py-2 text-left">Name</th>
+              <th class="px-3 py-2 text-left">Band</th>
+              <th class="px-3 py-2 text-left">Score</th>
+              <th class="px-3 py-2 text-left">Category</th>
+              <th class="px-3 py-2 text-left">Status</th>
+              <th class="px-3 py-2 text-left">Annual spend</th>
+              <th class="px-3 py-2 text-left">Last scored</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @vendors.each do |vendor| %>
+              <%= render Vendors::VendorRowComponent.new(vendor: vendor, score: @latest_scores[vendor.id]) %>
+            <% end %>
+          </tbody>
+        </table>
+
+        <div class="flex items-center gap-3 p-3 border-t border-gray-100 bg-gray-50" data-testid="vendors-bulk-actions">
+          <span class="text-xs text-gray-500">Bulk action:</span>
+          <input type="text" name="category" placeholder="Re-tag category"
+                 class="rounded-md border border-gray-300 px-2 py-1 text-sm">
+          <button type="submit" class="rounded-md px-3 py-1 text-sm font-medium text-white" style="background-color: var(--brand-accent);">
+            Apply to selected
+          </button>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

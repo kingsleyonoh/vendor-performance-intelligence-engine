@@ -1,0 +1,77 @@
+<% content_for :title, "Audit Log — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="space-y-4">
+  <header class="flex items-baseline justify-between">
+    <h1 class="text-xl font-semibold text-gray-900">Audit Log</h1>
+    <span class="text-sm text-gray-500" data-testid="audit-log-total">
+      <%= @total_count %> rows
+    </span>
+  </header>
+
+  <% if @entries.empty? %>
+    <div class="bg-white rounded-lg shadow-sm p-8 text-center"
+         data-testid="audit-log-empty">
+      <p class="text-sm text-gray-500">No audit log entries yet for this tenant.</p>
+    </div>
+  <% else %>
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <table class="min-w-full text-sm" data-testid="audit-log-table">
+        <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-2 font-medium">Occurred</th>
+            <th class="px-4 py-2 font-medium">Actor</th>
+            <th class="px-4 py-2 font-medium">Action</th>
+            <th class="px-4 py-2 font-medium">Entity</th>
+            <th class="px-4 py-2 font-medium">Entity ID</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @entries.each do |entry| %>
+            <tr data-testid="audit-row"
+                data-audit-id="<%= entry.id %>"
+                class="hover:bg-gray-50">
+              <td class="px-4 py-2 whitespace-nowrap text-gray-700">
+                <%= entry.occurred_at&.strftime("%Y-%m-%d %H:%M:%S UTC") %>
+              </td>
+              <td class="px-4 py-2 text-gray-700">
+                <span class="font-mono text-xs text-gray-500"><%= entry.actor_type %></span>
+                <% if entry.actor_id.present? %>
+                  <span class="font-mono text-xs text-gray-400 ml-1">
+                    <%= entry.actor_id.to_s.first(8) %>
+                  </span>
+                <% end %>
+              </td>
+              <td class="px-4 py-2 font-mono text-xs text-gray-900">
+                <%= entry.action %>
+              </td>
+              <td class="px-4 py-2 text-gray-700"><%= entry.entity_type %></td>
+              <td class="px-4 py-2 font-mono text-xs text-gray-500">
+                <%= entry.entity_id&.to_s&.first(8) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% total_pages = (@total_count.to_f / @per_page).ceil %>
+    <% if total_pages > 1 %>
+      <nav class="flex items-center justify-between pt-2 text-sm text-gray-600"
+           data-testid="audit-log-pagination">
+        <% if @page > 1 %>
+          <%= link_to "Previous", audit_log_path(page: @page - 1),
+                class: "px-3 py-1 rounded border border-gray-300 hover:bg-gray-50" %>
+        <% else %>
+          <span></span>
+        <% end %>
+        <span>Page <%= @page %> of <%= total_pages %></span>
+        <% if @page < total_pages %>
+          <%= link_to "Next", audit_log_path(page: @page + 1),
+                class: "px-3 py-1 rounded border border-gray-300 hover:bg-gray-50" %>
+        <% else %>
+          <span></span>
+        <% end %>
+      </nav>
+    <% end %>
+  <% end %>
+</div>

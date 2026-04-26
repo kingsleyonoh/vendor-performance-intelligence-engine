@@ -1,0 +1,53 @@
+<% content_for :title, "API Keys — #{UiBrand.display_name_for(Current.tenant)}" %>
+
+<div class="max-w-2xl space-y-6">
+  <header>
+    <h1 class="text-2xl font-bold text-gray-900">API keys</h1>
+    <p class="text-sm text-gray-500">
+      One key per tenant. Rotation immediately invalidates the existing key — update all
+      ecosystem integrations before closing this page.
+    </p>
+  </header>
+
+  <div class="bg-white border rounded-md p-4">
+    <h2 class="text-sm font-medium text-gray-700">Current key</h2>
+    <p class="text-base text-gray-900 mt-2">
+      <span class="text-xs text-gray-500">Prefix:</span>
+      <code class="font-mono text-sm bg-gray-100 px-2 py-1 rounded"
+            data-testid="current-api-key-prefix"><%= @prefix %></code>
+    </p>
+    <p class="text-xs text-gray-500 mt-2">
+      Only the prefix is stored. The full raw key is hashed (SHA-256) and discarded after
+      generation — there is no way to recover it. If lost, rotate to issue a new one.
+    </p>
+  </div>
+
+  <% if @new_raw_key.present? %>
+    <div class="bg-amber-50 border border-amber-300 rounded-md p-4"
+         data-testid="rotated-key-banner">
+      <h2 class="text-sm font-semibold text-amber-900">New API key — copy now</h2>
+      <p class="text-xs text-amber-800 mt-1">
+        This is the only time the full raw key will be displayed. Reloading or navigating
+        away discards it.
+      </p>
+      <pre class="mt-3 p-3 bg-white border rounded text-xs font-mono break-all"
+           data-testid="raw-api-key"><%= @new_raw_key %></pre>
+    </div>
+  <% end %>
+
+  <div class="bg-white border rounded-md p-4">
+    <h2 class="text-sm font-medium text-gray-700">Rotate</h2>
+    <p class="text-xs text-gray-500 mt-1">
+      Rotation generates a fresh key and immediately invalidates the existing one.
+      Update every ecosystem adapter (Notification Hub, Workflow Engine, Webhook Engine,
+      Invoice Recon, Contract Lifecycle, Recon Engine, RAG Platform) before closing this page.
+    </p>
+    <%= form_with url: settings_api_keys_path, method: :post, local: true, class: "mt-3" do |f| %>
+      <%= f.submit "Rotate API key",
+            class: "px-4 py-2 rounded-md text-sm font-medium text-white",
+            style: "background-color: var(--brand-accent);",
+            data: { confirm: "This will immediately invalidate the existing key. Continue?",
+                    testid: "rotate-key-btn" } %>
+    <% end %>
+  </div>
+</div>

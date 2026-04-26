@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Trend Analysis — <%= h(f("tenant.legal_name")) %></title>
+  <style>
+    body { font-family: "Helvetica", "Arial", sans-serif; font-size: 11pt; color: #1a202c; margin: 0; padding: 0; }
+    .header { border-bottom: 4px solid <%= h(f("tenant.brand_accent_hex")) %>; padding-bottom: 8px; margin-bottom: 16px; }
+    .header .legal-name { font-size: 16pt; font-weight: bold; color: <%= h(f("tenant.brand_primary_hex")) %>; }
+    .title { font-size: 22pt; font-weight: bold; margin: 12px 0 4px 0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
+    th { background: #edf2f7; font-weight: bold; }
+    .footer { font-size: 8pt; color: #4a5568; margin-top: 24px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="legal-name"><%= h(f("tenant.legal_name")) %></div>
+    <div><%= h(f("tenant.display_name")) %> &middot; Trend Analysis</div>
+  </div>
+
+  <div class="title">Trend Analysis</div>
+  <p>Window: <%= h(f("data.window_days")) %> days</p>
+
+  <table>
+    <thead>
+      <tr><th>Week</th><th>Vendors</th><th>Low</th><th>Medium</th><th>High</th><th>Critical</th><th>Avg Score</th></tr>
+    </thead>
+    <tbody>
+      <% (f("data.weekly_buckets", default: []) || []).each do |b| %>
+        <% bc = b["band_counts"] || {} %>
+        <tr>
+          <td><%= h(b["week_start"]) %></td>
+          <td><%= h(b["score_count"]) %></td>
+          <td><%= h(bc["low"] || 0) %></td>
+          <td><%= h(bc["medium"] || 0) %></td>
+          <td><%= h(bc["high"] || 0) %></td>
+          <td><%= h(bc["critical"] || 0) %></td>
+          <td><%= format("%.2f", b["avg_composite"].to_f) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <strong><%= h(f("links.legal_footer.full_legal_name")) %></strong>
+  </div>
+</body>
+</html>

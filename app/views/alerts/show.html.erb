@@ -1,0 +1,32 @@
+<% content_for :title, "Alert — #{@vendor.canonical_name}" %>
+
+<div class="space-y-4">
+  <header>
+    <h1 class="text-2xl font-bold text-gray-900">
+      <%= link_to @vendor.canonical_name, vendor_path(@vendor), class: "hover:underline" %>
+    </h1>
+    <p class="text-sm text-gray-500">
+      <%= render Alerts::BandChangePillComponent.new(previous_band: @alert.previous_band, new_band: @alert.new_band) %>
+      &middot; created <%= @alert.created_at.iso8601 %>
+    </p>
+  </header>
+
+  <section class="bg-white rounded-lg shadow-sm p-4 space-y-2" data-testid="alert-detail">
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div><span class="text-gray-500">Status:</span> <span data-testid="alert-status"><%= @alert.status %></span></div>
+      <div><span class="text-gray-500">Direction:</span> <%= @alert.direction %></div>
+      <div><span class="text-gray-500">Previous score:</span> <%= @alert.previous_score.to_f.round(1) %></div>
+      <div><span class="text-gray-500">New score:</span> <%= @alert.new_score.to_f.round(1) %></div>
+      <div><span class="text-gray-500">Dispatch attempts:</span> <%= @alert.dispatch_attempts %></div>
+      <div><span class="text-gray-500">Hub event:</span> <%= @alert.hub_event_id || "—" %></div>
+      <% if @alert.last_error.present? %>
+        <div class="col-span-2 text-red-600"><span class="text-gray-500">Last error:</span> <%= @alert.last_error %></div>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="bg-white rounded-lg shadow-sm p-4">
+    <h2 class="text-sm font-semibold text-gray-700 mb-2">Frozen delivery payload (PRD §15 #12)</h2>
+    <pre class="text-xs bg-gray-50 p-3 rounded overflow-auto" data-testid="delivery-payload"><%= JSON.pretty_generate(@alert.delivery_payload) %></pre>
+  </section>
+</div>

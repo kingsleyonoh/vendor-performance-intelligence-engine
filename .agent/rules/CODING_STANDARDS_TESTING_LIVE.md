@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} — Coding Standards: Live & Integration Testing
+# Vendor Performance Intelligence Engine — Coding Standards: Live & Integration Testing
 
 > Part 4 of 5. Also loaded: `CODING_STANDARDS.md` (core AI discipline), `CODING_STANDARDS_META.md` (skills, env, branching), `CODING_STANDARDS_TESTING.md` (core TDD), `CODING_STANDARDS_TESTING_E2E.md` (E2E via real HTTP), `CODING_STANDARDS_DOMAIN.md` (deploy/security)
 > This file covers the mock policy, component testing, and in-process backend integration testing. E2E testing lives in `CODING_STANDARDS_TESTING_E2E.md`.
@@ -15,7 +15,7 @@ When deciding how to test a service, follow this order:
 3. **Mock** (last resort) — only when options 1 and 2 are impossible
 
 ### Test LIVE (Never Mock)
-- Your database ({{LOCAL_SERVICES}}) — validates schema, column names, constraints, query behavior
+- Your database (local PostgreSQL, local Redis, local NATS (optional)) — validates schema, column names, constraints, query behavior
 - Your own API endpoints — call the actual route, not a stub
 - Your own server actions / business logic — test the real function
 - File storage you control (local filesystem, local object storage)
@@ -46,99 +46,41 @@ A mock that returns `{ user_id: 1 }` will pass even when the real column is `use
 - Each test MUST clean up after itself (delete rows, reset state)
 - Use transactions with rollback when possible for speed
 
-<!-- CONDITIONAL: FRONTEND_FRAMEWORK=React — Bootstrap Step 5c: KEEP this section for React frontend projects, REMOVE for backend-only -->
-## Component Testing (React Testing Library)
+## Backend API & Integration Testing (Rails)
 
-> This section applies to projects with a React frontend. If the project has no UI, skip this section entirely.
-
-### When to Write Component Tests
-- Every **interactive component**: forms, dialogs, accordions, dropdowns, buttons with click handlers
-- Every component with **conditional rendering** (show/hide logic, loading states, error states)
-- Any component where a bug would **block user interaction** (can't type, can't click, can't submit)
-- **Not required for**: pure display components with no interactivity (static text, icons, layout wrappers)
-
-### What to Test
-| Priority | Test This | Example |
-|----------|-----------|---------|
-| 1 | User interactions | Click button → dialog opens; type in input → value updates |
-| 2 | Conditional rendering | Error state shows message; loading state shows spinner |
-| 3 | Form validation feedback | Submit empty form → validation errors appear |
-| 4 | Accessible roles & labels | Button has correct label; form inputs are labeled |
-| 5 | Callback invocation | onSubmit called with correct data; onCancel fires |
-
-### What NOT to Test
-- **Styling** — don't assert on classNames, colors, or CSS
-- **Internal state** — don't reach into `useState` values; test what the USER sees
-- **Snapshot tests** — they create noise and break on every minor change. Test behavior instead.
-- **Implementation details** — don't test that a specific hook was called; test the outcome
-
-### RTL Query Priority (follow this order)
-1. `getByRole` — accessible role (button, textbox, dialog) — **always prefer this**
-2. `getByLabelText` — form inputs with labels
-3. `getByText` — visible text content
-4. `getByPlaceholderText` — placeholder fallback
-5. `getByTestId` — **last resort only** — used when no semantic query works
-
-### RTL Best Practices
-- Use `userEvent` over `fireEvent` — it simulates real browser behavior (focus, blur, keyboard)
-- Use `screen` for queries — not destructured render result
-- Use `waitFor` for async operations — never `setTimeout`
-- Use `within` to scope queries inside a container (e.g., within a specific dialog)
-- Wrap state updates in `act()` only if React warns you — RTL handles this automatically in most cases
-
-### File Naming & Location
-- Name: `ComponentName.test.tsx` — co-located next to the component file
-- Example: `src/components/ProductFormDialog.test.tsx`
-- Group test utilities in `src/test/helpers.ts` if shared across component tests
-
-### Minimum Coverage Rule
-Every interactive React component MUST have at least:
-- **1 happy-path interaction test** (user performs the primary action successfully)
-- **1 error/edge-case test** (empty submission, missing data, disabled state)
-- If a component has 0 tests and it has click/type/submit handlers → it's a bug waiting to happen
-
-### Setup (Vitest + jsdom)
-Component tests run in Node.js with a simulated DOM — no browser needed. Typical setup:
-- `vitest` as test runner (or `jest` if the project already uses it)
-- `@testing-library/react` for component rendering and queries
-- `@testing-library/user-event` for simulating user interactions
-- `jsdom` or `happy-dom` as the test environment
-- Configure in `vitest.config.ts`: `environment: 'jsdom'`
-<!-- END CONDITIONAL: FRONTEND_FRAMEWORK=React -->
-
-<!-- CONDITIONAL: BACKEND_ONLY — Bootstrap Step 5c: KEEP this section for backend-only projects (API, CLI, worker), REMOVE for React frontend -->
-## Backend API & Integration Testing
-
-> This section applies to backend-only projects (APIs, workers, CLI tools). If the project has a React frontend, use the Component Testing section above instead.
-> **Note:** This is in-process integration testing (test client like `inject()` or `supertest`). For real-HTTP testing over the network, see `CODING_STANDARDS_TESTING_E2E.md`.
+> **VPI is Rails + Hotwire (server-rendered HTML + Turbo + Stimulus), not React.** Unit-level Hotwire behavior is validated indirectly; system UI tests are covered by Capybara + Playwright — see `CODING_STANDARDS_TESTING_E2E.md`. There is no React Testing Library equivalent in this project.
+> **Note:** This is in-process integration testing via Rails `ActionDispatch::IntegrationTest`. For real-HTTP testing over the network, see `CODING_STANDARDS_TESTING_E2E.md`.
 
 ### When to Write API Integration Tests
-- Every **API endpoint**: test request → response cycle with real HTTP semantics
-- Every **message consumer/handler**: test event processing with real or local message broker
-- Every **background job/worker**: test job execution with actual service dependencies
-- Every **middleware**: test request interception, auth guards, validation layers
+- Every **API endpoint** (`/api/*`): test request → response cycle against the real Rails app via `ActionDispatch::IntegrationTest`
+- Every **Sidekiq job**: test job execution against real DB + Redis; assert on state changes + re-enqueued jobs
+- Every **NATS consumer**: publish a test message to a local NATS instance, assert the signal was stored
+- Every **Rack middleware** (especially `lib/auth/api_key_authenticator.rb`): test request interception, auth guards, `Current.tenant` resolution
 
 ### What to Test
 | Priority | Test This | Example |
 |----------|-----------|---------|
-| 1 | Request/response cycle | POST /api/users → 201, returns created user |
-| 2 | Input validation | Missing required field → 400 with specific error |
-| 3 | Auth & authorization | No token → 401; wrong role → 403 |
-| 4 | Error handling | Invalid ID → 404; DB constraint → 409 |
-| 5 | Edge cases | Empty body, oversized payload, duplicate submission |
+| 1 | Request/response cycle | `post "/api/signals", headers: {"X-API-Key" => key}, params: {...}` → 201, returns accepted count |
+| 2 | Input validation | Missing required field → 400 with dry-validation error path `details: [{path: "signal_code", issue: "..."}]` |
+| 3 | Auth & authorization | No key → 401; wrong tenant's key → 404 (never 403 — never reveal existence); ActionPolicy role denial → 403 |
+| 4 | Error handling | Invalid ID → 404; DB unique constraint → 409; unknown signal_code → 422 |
+| 5 | Tenant isolation | Tenant A's key requesting Tenant B's vendor ID → 404, NOT 403 |
+| 6 | Edge cases | Empty body, oversized payload, duplicate `source_event_id` (dedup silent skip) |
 
-### API Testing Patterns
-- Use the framework's built-in test client (e.g., Fastify `inject()`, Express `supertest`, FastAPI `TestClient`)
-- Test full request lifecycle — serialization, middleware, handler, response
-- Assert on status codes, response body structure, AND headers where relevant
-- Test pagination, filtering, and sorting with real DB rows
+### API Testing Patterns (Rails)
+- Use `ActionDispatch::IntegrationTest`. Hit endpoints with `post`, `get`, `patch`, `delete` directly against the app — this exercises the full Rack stack including the `api_key_authenticator` middleware.
+- Test full request lifecycle — middleware, controller, Alba serializer, response
+- Assert on status codes, parsed JSON body (`JSON.parse(response.body)`), AND headers where relevant (e.g., `X-RateLimit-Remaining` from Rack::Attack)
+- Test pagination, filtering, and sorting with real DB rows loaded from fixtures
 
 ### Message/Event Consumer Testing
-- Publish test events to a local broker (Kafka/Redpanda, RabbitMQ, Redis Streams)
-- Assert the consumer processes them correctly (DB writes, side effects)
-- Test error handling: malformed events, duplicate events, consumer restart
+- For NATS: start a local NATS server (`docker compose up -d nats`), publish test messages, assert the consumer processes them correctly
+- For Hub event ingress (`POST /api/signals/from-hub`): test HMAC verification + signal storage in the same request cycle
+- Test error handling: malformed events (→ 422), duplicate events (→ deduped silently via `source_event_id`), consumer restart mid-batch
 
 ### File Naming & Location
-- Name: `module-name.test.ts` or `test_module_name.py` — co-located or in `tests/` mirror
-- Group shared test helpers in `tests/helpers/` or `tests/factories/`
-<!-- END CONDITIONAL: BACKEND_ONLY -->
+- Controllers: `test/controllers/api/vendors_controller_test.rb`
+- Jobs: `test/jobs/score_recompute_job_test.rb`
+- Lib: `test/lib/scoring/composite_scorer_test.rb`
+- Integration (cross-module): `test/integration/signal_ingestion_flow_test.rb`
+- Shared helpers: `test/support/` (loaded automatically by `test/test_helper.rb`)

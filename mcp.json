@@ -1,0 +1,43 @@
+{
+  "name": "vendor-performance-intelligence-engine",
+  "version": "0.1.0",
+  "description": "Multi-signal behavioral vendor scoring — composite risk score per vendor per tenant, explainable, rules-driven.",
+  "transport": "stdio",
+  "tools": [
+    {
+      "name": "register_tenant",
+      "description": "Create a new tenant and return an API key (gated by SELF_REGISTRATION_ENABLED).",
+      "http": { "method": "POST", "path": "/api/tenants/register" }
+    },
+    {
+      "name": "push_signal",
+      "description": "Push one signal or a batch to the ingestion pipeline.",
+      "http": { "method": "POST", "path": "/api/signals" }
+    },
+    {
+      "name": "get_vendor_score",
+      "description": "Get the current composite score for a vendor including band, trend, category breakdown, and top 5 contributors.",
+      "http": { "method": "GET", "path": "/api/vendors/{id}/score/current" }
+    },
+    {
+      "name": "list_alerts",
+      "description": "List risk band-change alerts, filterable by status, band, or vendor.",
+      "http": { "method": "GET", "path": "/api/alerts" }
+    },
+    {
+      "name": "acknowledge_alert",
+      "description": "Acknowledge a risk alert.",
+      "http": { "method": "POST", "path": "/api/alerts/{id}/acknowledge" }
+    },
+    {
+      "name": "preview_scoring_rules",
+      "description": "Preview band-change deltas on a sample vendor set before activating a new scoring rule.",
+      "http": { "method": "POST", "path": "/api/scoring-rules/preview" }
+    },
+    {
+      "name": "generate_report",
+      "description": "Queue a report: vendor_scorecard, portfolio_risk, retender_candidates, or trend_analysis.",
+      "http": { "method": "POST", "path": "/api/reports" }
+    }
+  ]
+}

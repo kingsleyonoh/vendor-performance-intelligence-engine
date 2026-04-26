@@ -1,0 +1,27 @@
+# Default scoring rule — PRD §4.7 + §5.4. Seeded per-tenant by `db/seeds.rb`.
+# Idempotent upsert keyed on (tenant_id, name). Category weights sum to 1.00
+# (± 0.01) and band thresholds are strictly ascending. Operator can clone
+# this rule, retune weights, and activate the clone (which atomically
+# deactivates Default v1 per `ScoringRule#deactivate_sibling_if_activating`).
+#
+# Band direction (PRD §4.6, §4.7): composite_score rises with risk.
+#   score <= low_max     -> band = low       (< 25)
+#   score <= medium_max  -> band = medium    (25..50)
+#   score <= high_max    -> band = high      (50..75)
+#   score >  high_max    -> band = critical  (> 75)
+
+name: Default v1
+is_active: true
+category_weights:
+  financial: 0.35
+  operational: 0.15
+  contractual: 0.30
+  integration: 0.15
+  transactional: 0.05
+signal_weight_overrides: {}
+band_thresholds:
+  low_max: 25.0
+  medium_max: 50.0
+  high_max: 75.0
+window_days: 90
+time_decay_half_life_days: 45
