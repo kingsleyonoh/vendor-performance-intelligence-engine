@@ -44,7 +44,7 @@ gem "thruster", require: false
 # ---------------------------------------------------------------------------
 
 # Background jobs — Sidekiq 7 (PRD §3, §7)
-gem "sidekiq", "~> 7.3"
+gem "sidekiq", "~> 8.1"
 
 # Cron scheduling for Sidekiq (PRD §7 — PartitionManagerJob + others)
 gem "sidekiq-cron", "~> 1.12"
