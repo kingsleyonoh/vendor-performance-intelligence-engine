@@ -145,7 +145,7 @@ group :test do
 
   # Playwright driver for Capybara (used by test:system per PRD §3 testing stack)
   gem "capybara-playwright-driver", "~> 0.5"
-  gem "playwright-ruby-client", "~> 1.47"
+  gem "playwright-ruby-client", "~> 1.59"
 
   # VCR + WebMock for ecosystem HTTP fixtures (PRD §6, §15 — fixture-backed
   # integration tests are MANDATORY for every adapter).
