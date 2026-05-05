@@ -95,7 +95,7 @@ gem "prometheus-client", "~> 4.2"
 # Product analytics — PostHog (self-hosted). Five instrumented events per
 # PRD §10b: vendor_viewed, alert_acknowledged, scoring_rule_activated,
 # report_generated, api_key_rotated. No-op when POSTHOG_API_KEY unset.
-gem "posthog-ruby", "~> 3.0"
+gem "posthog-ruby", "~> 3.8"
 
 # View components — ViewComponent for PDF + UI rendering (PRD §3, §9)
 gem "view_component", "~> 3.18"
